@@ -1,0 +1,32 @@
+.list {
+  display: grid;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--stroke-1);
+  font-size: var(--fs-sm);
+}
+
+.row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.key {
+  color: var(--text-3);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.value {
+  color: var(--text-1);
+  margin-left: auto;
+  text-align: right;
+  overflow-wrap: anywhere;
+}

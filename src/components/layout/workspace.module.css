@@ -1,0 +1,129 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--inspector-w);
+  height: 100%;
+}
+
+.workspace[data-has-inspector='false'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.main {
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.inspector {
+  min-width: 0;
+  border-left: 1px solid var(--stroke-1);
+  background: var(--surface-1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.inspectorHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  height: 38px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--stroke-1);
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  z-index: 1;
+  flex: none;
+}
+
+.inspectorTitle {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.closeButton {
+  display: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+}
+
+.closeButton:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+}
+
+.closeButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.inspectorBody {
+  padding: var(--panel-pad);
+  display: grid;
+  gap: var(--panel-gap);
+  align-content: start;
+}
+
+.inspectorBackdrop {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inspector {
+    position: fixed;
+    top: var(--topbar-h);
+    right: 0;
+    bottom: 0;
+    width: min(340px, 90vw);
+    transform: translateX(101%);
+    transition: transform var(--dur-3) var(--ease-out);
+    z-index: var(--z-overlay);
+    box-shadow: var(--shadow-2);
+    border-left: 1px solid var(--stroke-2);
+  }
+
+  .workspace[data-open='true'] .inspector {
+    transform: none;
+  }
+
+  .inspectorHead {
+    display: flex;
+  }
+
+  .closeButton {
+    display: grid;
+  }
+
+  .inspectorBackdrop {
+    display: block;
+    position: fixed;
+    top: var(--topbar-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: var(--overlay);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-3) var(--ease-out);
+    z-index: calc(var(--z-overlay) - 1);
+    border: 0;
+    padding: 0;
+  }
+
+  .workspace[data-open='true'] .inspectorBackdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

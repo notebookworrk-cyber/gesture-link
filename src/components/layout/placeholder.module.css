@@ -1,0 +1,15 @@
+.inspectorNote {
+  display: flex;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.inspectorNote svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-2);
+}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-accent="mint" data-density="comfortable">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="theme-color" content="#0b0d0e" />
+    <meta
+      name="description"
+      content="GestureLink — a local, privacy-first gesture workspace: sign reading, air whiteboard, gesture camera and gesture training."
+    />
+    <title>GestureLink</title>
+    <script>
+      ;(() => {
+        try {
+          const raw = localStorage.getItem('gesturelink.settings.v1')
+          if (!raw) return
+          const parsed = JSON.parse(raw)
+          const s = parsed && parsed.state ? parsed.state : {}
+          const appearance = s.appearance || {}
+          const root = document.documentElement
+          if (appearance.theme === 'system') {
+            const dark = matchMedia('(prefers-color-scheme: dark)').matches
+            root.dataset.theme = dark ? 'dark' : 'light'
+          } else if (appearance.theme) {
+            root.dataset.theme = appearance.theme
+          }
+          if (appearance.accent) root.dataset.accent = appearance.accent
+          if (appearance.density) root.dataset.density = appearance.density
+          if (appearance.largeText) root.dataset.largeText = 'true'
+          if (appearance.highContrast) root.dataset.highContrast = 'true'
+          if (appearance.reduceMotion) root.dataset.reduceMotion = 'true'
+          if (s.language) root.lang = s.language
+        } catch {
+          /* first paint falls back to defaults */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

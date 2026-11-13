@@ -1,0 +1,19 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+coverage/
+test-results/
+playwright-report/
+.artifacts/
+*.log
+.DS_Store
+Thumbs.db
+
+# Machine-local npm cache redirect (see PROJECT.md).
+.npmrc
+
+# Generated from node_modules and models/ by scripts/sync-assets.mjs
+public/models/
+public/mediapipe/
