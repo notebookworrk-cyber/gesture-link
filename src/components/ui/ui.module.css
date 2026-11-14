@@ -247,6 +247,10 @@
   gap: var(--sp-3);
 }
 
+.sliderTop[data-hide-label='true'] {
+  justify-content: flex-end;
+}
+
 .sliderValue {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);

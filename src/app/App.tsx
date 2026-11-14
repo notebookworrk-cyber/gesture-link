@@ -1,6 +1,7 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { useAppearanceSync } from '@/settings/useAppearanceSync'
+import { useVisionSettingsSync } from '@/vision/useVision'
 import { GalleryPage } from '@/pages/Gallery/GalleryPage'
 import { GestureCameraPage } from '@/pages/GestureCamera/GestureCameraPage'
 import { HomePage } from '@/pages/Home/HomePage'
@@ -11,6 +12,7 @@ import { WhiteboardPage } from '@/pages/Whiteboard/WhiteboardPage'
 
 export function App() {
   useAppearanceSync()
+  useVisionSettingsSync()
 
   return (
     <HashRouter>

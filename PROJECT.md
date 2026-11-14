@@ -32,8 +32,10 @@
 ## Milestones
 
 1. **Shell, design system, settings** — complete and browser-verified.
-2. **Vision engine** — camera manager, landmarkers, smoothing, feature
-   extraction, gesture registry and calibration, wired to the status chips.
+2. **Vision engine** — camera manager, hand landmarker, smoothing, feature
+   extraction, gesture state machine and camera/tracking/performance settings —
+   implemented and browser-verified with a synthetic camera. Real-hand accuracy
+   is explicitly unverified.
 3. **Air Whiteboard** — fingertip drawing, toolbar, undo/redo, exports.
 4. **Gesture Camera and Gallery** — peace-sign capture, countdown, IndexedDB.
 5. **Sign Reader and captions** — trainable classifier, finger counting,
@@ -47,6 +49,9 @@
 - No feature is reported as complete from a successful compilation alone.
 - Every milestone runs `npm run verify` plus `scripts/visual-check.mjs` against
   the production build at 1440, 1280, 1024 and 390 px, in at least one non-Latin
-  locale.
+  locale. Camera work also runs `scripts/vision-check.mjs`, which uses Chrome's
+  synthetic capture device (`--use-fake-device-for-media-stream`).
+- Synthetic-camera results prove wiring, lifecycle and status reporting only.
+  They are always reported separately from real-webcam validation.
 - Recognition accuracy is only reported from measurements on real recordings,
   never estimated.

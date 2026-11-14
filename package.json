@@ -11,9 +11,11 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc -b --pretty false",
-    "lint": "eslint src scripts",
+    "lint": "eslint src tests scripts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check:ui": "node scripts/visual-check.mjs",
+    "check:vision": "node scripts/vision-check.mjs",
     "models": "node scripts/fetch-models.mjs",
     "verify": "node scripts/verify.mjs"
   },

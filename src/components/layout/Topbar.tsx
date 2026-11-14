@@ -17,6 +17,8 @@ function cameraChip(phase: VisionStatus['camera']): { labelKey: MessageKey; tone
       return { labelKey: 'topbar.cameraOn', tone: 'ok' }
     case 'starting':
       return { labelKey: 'topbar.cameraPending', tone: 'warn' }
+    case 'paused':
+      return { labelKey: 'topbar.cameraPaused', tone: 'neutral' }
     case 'error':
       return { labelKey: 'topbar.cameraBlocked', tone: 'danger' }
     default:
@@ -31,7 +33,7 @@ function trackingChip(phase: VisionStatus['tracking']): { labelKey: MessageKey; 
     case 'loading':
       return { labelKey: 'topbar.trackingActive', tone: 'warn' }
     case 'lost':
-      return { labelKey: 'topbar.trackingIdle', tone: 'warn' }
+      return { labelKey: 'topbar.trackingIdle', tone: 'neutral' }
     case 'error':
       return { labelKey: 'topbar.trackingUnavailable', tone: 'danger' }
     default:

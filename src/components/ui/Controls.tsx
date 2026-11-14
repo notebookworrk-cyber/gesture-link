@@ -123,15 +123,29 @@ interface SliderProps {
   label: string
   format?: (value: number) => string
   id?: string
+  /** The surrounding Field already renders the label. */
+  hideLabel?: boolean
 }
 
-export function Slider({ value, min, max, step, onChange, label, format, id }: SliderProps) {
+export function Slider({
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  label,
+  format,
+  id,
+  hideLabel = false,
+}: SliderProps) {
   return (
     <div className={styles.sliderRow}>
-      <div className={styles.sliderTop}>
-        <label className={styles.fieldLabel} htmlFor={id}>
-          {label}
-        </label>
+      <div className={styles.sliderTop} data-hide-label={hideLabel}>
+        {hideLabel ? null : (
+          <label className={styles.fieldLabel} htmlFor={id}>
+            {label}
+          </label>
+        )}
         <span className={styles.sliderValue}>{format ? format(value) : value}</span>
       </div>
       <input
