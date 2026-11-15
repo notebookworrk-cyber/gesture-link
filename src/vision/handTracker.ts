@@ -1,17 +1,47 @@
 import type { HandLandmarker, HandLandmarkerResult } from '@mediapipe/tasks-vision'
 
+/**
+ * Model bundles. The files are the same ones scripts/fetch-models.mjs
+ * downloads from Google's MediaPipe model store, so the CDN copy is
+ * byte-identical to the local copy.
+ *
+ * Order matters: GitHub Pages served the 7.8 MB hand model so slowly that it
+ * timed out on a phone connection (measured ~60 s from Pages vs ~1 s from
+ * Google storage), so the CDN is tried first and the bundled local copy is
+ * the offline fallback.
+ */
+const MODEL_CDN_BASE = 'https://storage.googleapis.com/mediapipe-models'
+
 /** Resolved lazily so importing the engine never requires `window`. */
 export function wasmRoot(): string {
   return new URL(`${import.meta.env.BASE_URL}mediapipe/wasm`, window.location.href).href
 }
 
+function localModelUrl(file: string): string {
+  return new URL(`${import.meta.env.BASE_URL}models/${file}`, window.location.href).href
+}
+
+export function handModelCandidates(): string[] {
+  return [
+    `${MODEL_CDN_BASE}/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+    localModelUrl('hand_landmarker.task'),
+  ]
+}
+
+export function faceModelCandidates(): string[] {
+  return [
+    `${MODEL_CDN_BASE}/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+    localModelUrl('face_landmarker.task'),
+  ]
+}
+
+/** First candidate, for callers that only need one URL. */
 export function handModelUrl(): string {
-  return new URL(`${import.meta.env.BASE_URL}models/hand_landmarker.task`, window.location.href)
-    .href
+  return handModelCandidates()[0]!
 }
 
 export function faceModelUrl(): string {
-  return new URL(`${import.meta.env.BASE_URL}models/face_landmarker.task`, window.location.href).href
+  return faceModelCandidates()[0]!
 }
 
 export interface TrackerOptions {
@@ -44,10 +74,10 @@ export class HandTracker {
     const vision = await import('@mediapipe/tasks-vision')
     const fileset = await vision.FilesetResolver.forVisionTasks(wasmRoot())
 
-    const create = (delegate: Delegate) =>
+    const create = (modelAssetPath: string, delegate: Delegate) =>
       vision.HandLandmarker.createFromOptions(fileset, {
         baseOptions: {
-          modelAssetPath: handModelUrl(),
+          modelAssetPath,
           delegate,
         },
         runningMode: 'VIDEO',
@@ -58,17 +88,28 @@ export class HandTracker {
       })
 
     this.close()
-    try {
-      this.landmarker = await create(options.delegate)
-      this.activeDelegate = options.delegate
-    } catch (error) {
-      if (options.delegate !== 'GPU') throw error
-      // A GPU session can fail on constrained drivers. Falling back is
-      // reported through `delegate`, never silently claimed as GPU.
-      this.landmarker = await create('CPU')
-      this.activeDelegate = 'CPU'
+    let lastError: unknown = null
+    for (const modelAssetPath of handModelCandidates()) {
+      try {
+        this.landmarker = await create(modelAssetPath, options.delegate)
+        this.activeDelegate = options.delegate
+        return this.activeDelegate
+      } catch (error) {
+        lastError = error
+        if (options.delegate === 'GPU') {
+          try {
+            // A GPU session can fail on constrained drivers. Falling back is
+            // reported through `delegate`, never silently claimed as GPU.
+            this.landmarker = await create(modelAssetPath, 'CPU')
+            this.activeDelegate = 'CPU'
+            return this.activeDelegate
+          } catch (cpuError) {
+            lastError = cpuError
+          }
+        }
+      }
     }
-    return this.activeDelegate
+    throw lastError
   }
 
   detect(source: HTMLCanvasElement, timestampMs: number): HandLandmarkerResult | null {
