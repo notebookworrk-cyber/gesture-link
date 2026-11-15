@@ -1,5 +1,5 @@
 import type { FaceLandmarker, FaceLandmarkerResult } from '@mediapipe/tasks-vision'
-import { faceModelUrl, wasmRoot, type Delegate } from './handTracker'
+import { faceModelCandidates, wasmRoot, type Delegate } from './handTracker'
 import type { FaceReading, Landmark } from './types'
 
 /**
@@ -49,9 +49,9 @@ export class FaceTracker {
   async load(options: FaceTrackerOptions): Promise<Delegate> {
     const vision = await import('@mediapipe/tasks-vision')
     const fileset = await vision.FilesetResolver.forVisionTasks(wasmRoot())
-    const create = (delegate: Delegate) =>
+    const create = (modelAssetPath: string, delegate: Delegate) =>
       vision.FaceLandmarker.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: faceModelUrl(), delegate },
+        baseOptions: { modelAssetPath, delegate },
         runningMode: 'VIDEO',
         numFaces: options.maxFaces,
         minFaceDetectionConfidence: 0.5,
@@ -62,16 +62,27 @@ export class FaceTracker {
       })
 
     this.close()
-    try {
-      this.landmarker = await create(options.delegate)
-      this.activeDelegate = options.delegate
-    } catch (error) {
-      if (options.delegate !== 'GPU') throw error
-      // Falling back to CPU is reported through `delegate`, never claimed as GPU.
-      this.landmarker = await create('CPU')
-      this.activeDelegate = 'CPU'
+    let lastError: unknown = null
+    for (const modelAssetPath of faceModelCandidates()) {
+      try {
+        this.landmarker = await create(modelAssetPath, options.delegate)
+        this.activeDelegate = options.delegate
+        return this.activeDelegate
+      } catch (error) {
+        lastError = error
+        if (options.delegate === 'GPU') {
+          try {
+            // Falling back to CPU is reported through `delegate`, never claimed as GPU.
+            this.landmarker = await create(modelAssetPath, 'CPU')
+            this.activeDelegate = 'CPU'
+            return this.activeDelegate
+          } catch (cpuError) {
+            lastError = cpuError
+          }
+        }
+      }
     }
-    return this.activeDelegate
+    throw lastError
   }
 
   /** Detects faces and returns smoothed readings in normalised image space. */
