@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Camera,
   CircleStop,
-  Download,
   Play,
   Plus,
   Square,
   Trash2,
-  Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SelectControl } from '@/components/ui/Controls'
@@ -31,7 +29,6 @@ export function TrainingPage() {
   const engine = getVisionEngine()
 
   const camera = useVisionStatus((state) => state.camera)
-  const tracking = useVisionStatus((state) => state.tracking)
 
   const labels = useSigns((state) => state.labels)
   const samples = useSigns((state) => state.samples)
