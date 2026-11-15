@@ -134,6 +134,35 @@
   border-top: 1px solid var(--stroke-1);
 }
 
+.bindingBlock {
+  display: grid;
+  gap: 8px;
+  padding: var(--sp-4) var(--panel-pad) var(--panel-pad);
+  border-top: 1px solid var(--stroke-1);
+  background: var(--surface-1);
+}
+
+.bindingBlock h3 {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.bindingBlock .rows {
+  padding: 0;
+}
+
+.conflict {
+  margin: 0;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  font-size: var(--fs-xs);
+}
+
 .previewHint {
   margin: 0;
   max-width: 66ch;

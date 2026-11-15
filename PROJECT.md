@@ -13,13 +13,14 @@
 | `@mediapipe/tasks-vision` **0.10.35** | Pinned to the last stable 0.10 line. The 1.x releases changed the wasm layout and were not needed for landmark detection. |
 | No Gesture Recognizer task | MediaPipe's recogniser only knows seven generic gestures (thumbs up, victory, etc.). Presenting those as ISL would be dishonest, so it is not used. |
 | Hand and face landmarkers only | Two models, about 11.6 MB total, both downloaded once and served locally. |
-| Canvas 2D | Sufficient for landmark overlays and the whiteboard; avoids a WebGL rendering layer on a 2 GB GPU. |
+| Canvas 2D | Sufficient for landmark overlays, the whiteboard and the photo studio composition; avoids a WebGL rendering layer on a 2 GB GPU. |
 | Hand-written classifiers | The training studio uses kNN/MLP implemented in TypeScript. No TensorFlow.js dependency. |
 | zustand | Small, no provider tree, persistence middleware for settings. |
 | Hash router, `base: './'` | The bundle works from any static host or subpath without rewrite rules. |
 | CSS Modules + token layer | The spec forbids hardcoded styling; tokens are the only source of colour, type and spacing. |
 | Vitest + jsdom, Playwright driving system Chrome | Fast unit tests plus real-browser verification without a 130 MB browser download. |
 | IndexedDB for media, LocalStorage for settings | Settings are tiny and synchronous at first paint; photos, drawings and samples need quota-aware storage. |
+| Photo filters as CSS filter operations | The preview and the capture run through the same `ctx.filter` string, so what the user sees is exactly what is stored. |
 
 ## Environment constraints
 
@@ -41,7 +42,14 @@
    gesture drawing — implemented and browser-verified at 1440, 1280, 1024 and
    390 px in English and Japanese, including four real export downloads. Real-hand
    air drawing is explicitly unverified.
-4. **Gesture Camera and Gallery** — peace-sign capture, countdown, IndexedDB.
+4. **Gesture Camera and Gallery** — one composited studio canvas with eight real
+   filters, six face-anchored sticker families, camera switching, a three second
+   gesture countdown, remappable gesture bindings and an IndexedDB photo store;
+   gallery with a thumbnail grid, full-size preview, rename, download, delete
+   behind a confirmation and a date filter — implemented and browser-verified at
+   1440, 1280, 1024 and 390 px in English and Japanese, including a real photo
+   download. Real-hand triggering and sticker placement on a real face are
+   explicitly unverified.
 5. **Sign Reader and captions** — trainable classifier, finger counting,
    sentence builder, speech.
 6. **Training Studio** — sample collection, training, evaluation, import/export.
@@ -57,7 +65,11 @@
   synthetic capture device (`--use-fake-device-for-media-stream`). The whiteboard
   runs `scripts/whiteboard-check.mjs`, which draws, selects, renames, reloads,
   downloads every export format, enters presentation mode and opens the gesture
-  dock with the same synthetic camera.
+  dock with the same synthetic camera. The camera studio runs
+  `scripts/camera-check.mjs`, which starts the synthetic camera, checks the
+  rendered preview pixels, switches filters and proves the filter reaches the
+  canvas, captures two photographs, renames, downloads and deletes one of them,
+  checks the binding conflict warning and walks the responsive layouts.
 - Synthetic-camera results prove wiring, lifecycle and status reporting only.
   They are always reported separately from real-webcam validation.
 - Recognition accuracy is only reported from measurements on real recordings,

@@ -1,5 +1,6 @@
 import { CameraManager, CameraError } from './CameraManager'
 import { HandTracker } from './handTracker'
+import { FaceTracker, FACE_FRAME_STRIDE } from './faceTracker'
 import { LandmarkSmoother } from './oneEuro'
 import { GestureStateMachine, type GestureUpdate } from './gestureStateMachine'
 import {
@@ -11,7 +12,7 @@ import {
   distance2d,
   palmSpan,
 } from './geometry'
-import { PROCESSING_WIDTH, type FrameReading, type HandReading, type Handedness, type Landmark, type StaticGestureId, type VisionConfig } from './types'
+import { PROCESSING_WIDTH, type FaceReading, type FrameReading, type HandReading, type Handedness, type Landmark, type StaticGestureId, type VisionConfig } from './types'
 import { defaultVisionConfig, cameraNeedsRestart, trackerNeedsReload } from './config'
 import { useVisionStatus, type VisionErrorCode } from './visionStatus'
 
@@ -40,6 +41,10 @@ const PALM_POINTS = [WRIST, 5, 9, 13, 17]
 export class VisionEngine {
   private readonly camera = new CameraManager()
   private readonly tracker = new HandTracker()
+  private readonly faces = new FaceTracker()
+  private faceWanted = false
+  private faceReadings: FaceReading[] = []
+  private frameIndex = 0
   private config: VisionConfig = defaultVisionConfig
 
   private canvas: HTMLCanvasElement | null = null
@@ -132,6 +137,8 @@ export class VisionEngine {
     this.clearReconfigureTimer()
     this.stopLoop()
     this.tracker.close()
+    this.faces.close()
+    this.faceReadings = []
     this.camera.stop()
     // Drop the inference buffer so the next session recreates it and publishes
     // its real width again; `stop` resets the reported width to zero.
@@ -152,6 +159,10 @@ export class VisionEngine {
       captureWidth: 0,
       captureHeight: 0,
       processingWidth: 0,
+      faces: 0,
+      faceTracking: this.faceWanted ? 'idle' : 'off',
+      faceDelegate: null,
+      faceMs: 0,
       error: null,
     })
   }
@@ -182,6 +193,48 @@ export class VisionEngine {
       () => this.flushReconfigure(),
       RECONFIGURE_DEBOUNCE_MS,
     )
+  }
+
+  /**
+   * Turns the face landmarker on or off. Workspaces that place stickers ask for
+   * faces explicitly; every other workspace keeps the per-frame budget for hands.
+   * Resolves once the model is loaded (or the load failed, which is reported in
+   * the status store rather than thrown at the view).
+   */
+  async setFaceTracking(enabled: boolean): Promise<void> {
+    this.faceWanted = enabled
+    if (!enabled) {
+      this.faces.close()
+      this.faceReadings = []
+      useVisionStatus
+        .getState()
+        .setStatus({ faceTracking: 'off', faces: 0, faceDelegate: null, faceMs: 0 })
+      return
+    }
+    await this.reloadFaces()
+  }
+
+  private async reloadFaces(): Promise<void> {
+    if (this.faces.loaded) {
+      useVisionStatus.getState().setStatus({ faceTracking: 'running' })
+      return
+    }
+    useVisionStatus.getState().setStatus({ faceTracking: 'loading' })
+    try {
+      const delegate = await this.faces.load({ delegate: this.trackerDelegate(), maxFaces: 2 })
+      if (!this.faceWanted) {
+        this.faces.close()
+        useVisionStatus.getState().setStatus({ faceTracking: 'off', faces: 0 })
+        return
+      }
+      useVisionStatus.getState().setStatus({
+        faceTracking: 'running',
+        faceDelegate: delegate === 'GPU' ? 'gpu' : 'cpu',
+      })
+    } catch {
+      this.faceWanted = false
+      useVisionStatus.getState().setStatus({ faceTracking: 'error', faces: 0 })
+    }
   }
 
   /**
@@ -257,6 +310,10 @@ export class VisionEngine {
       captureWidth: 0,
       captureHeight: 0,
       processingWidth: 0,
+      faces: 0,
+      faceTracking: this.faceWanted ? 'idle' : 'off',
+      faceDelegate: null,
+      faceMs: 0,
       error: null,
     })
 
@@ -278,6 +335,9 @@ export class VisionEngine {
       })
 
       await this.loadTracker(generation, true)
+      // A workspace may have asked for faces before the camera started, and the
+      // tracker is closed on stop, so re-open the face model for this session.
+      if (this.faceWanted && this.running) void this.reloadFaces()
     } catch (error) {
       if (generation !== this.generation) return
       this.running = false
@@ -456,6 +516,19 @@ export class VisionEngine {
     this.frameCount += 1
     this.framesThisRun += 1
 
+    // Faces run on alternate frames: the hand landmarker owns most of the
+    // per-frame budget, and sticker anchors do not need 30 Hz.
+    this.frameIndex += 1
+    if (this.faceWanted && this.faces.loaded && this.frameIndex % FACE_FRAME_STRIDE === 0) {
+      const faceStarted = performance.now()
+      this.faceReadings = this.faces.detect(canvas, this.lastTimestamp)
+      useVisionStatus.getState().setStatus({
+        faces: this.faceReadings.length,
+        faceMs: performance.now() - faceStarted,
+      })
+    }
+    const faces = this.faceReadings
+
     if (result) {
       const handCount = Math.min(result.landmarks.length, this.config.tracking.maxHands)
       const now = started
@@ -475,6 +548,7 @@ export class VisionEngine {
       const frame: FrameReading = {
         timestamp: now,
         hands,
+        faces,
         inferenceMs,
         sourceTime: video.currentTime,
       }

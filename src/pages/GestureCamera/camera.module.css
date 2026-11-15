@@ -1,0 +1,534 @@
+/* Gesture Camera workspace. Token driven like every other surface, so the
+   studio follows the theme, accent, density and accessibility overrides. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: var(--canvas-sunken);
+}
+
+/* ------------------------------------------------------------------- header */
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex: none;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--stroke-1);
+  background: var(--surface-1);
+}
+
+.headerText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eyebrow {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.headerText h1 {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-tight);
+}
+
+.headerText p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.device select {
+  max-width: 190px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------- body */
+
+.body {
+  display: grid;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------------- stage */
+
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.035), transparent 65%),
+    var(--canvas);
+  box-shadow: var(--shadow-1);
+}
+
+.source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  max-width: 1080px;
+  height: auto;
+  background: #0b0e11;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+}
+
+.placeholder strong {
+  color: var(--text-1);
+  font-size: var(--fs-lg);
+}
+
+.placeholder span {
+  max-width: 46ch;
+  font-size: var(--fs-sm);
+}
+
+.placeholder svg {
+  width: 22px;
+  height: 22px;
+  color: var(--text-3);
+}
+
+.alertIcon {
+  color: var(--danger);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingBadge {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  transform: translateX(-50%);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
+.loadingBadge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.05));
+  pointer-events: none;
+}
+
+.countdown span {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--canvas) 72%, transparent);
+  color: var(--text-1);
+  font-size: var(--fs-display);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-2);
+}
+
+/* ---------------------------------------------------------------- status bar */
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.gesture {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+}
+
+.gesture svg {
+  width: 13px;
+  height: 13px;
+}
+
+.gesture[data-active='true'] {
+  color: var(--accent);
+}
+
+.countdownChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: var(--fw-medium);
+}
+
+.countdownChip svg {
+  width: 12px;
+  height: 12px;
+}
+
+.delegate {
+  padding: 1px 6px;
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+}
+
+/* -------------------------------------------------------------------- trays */
+
+.trays {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--sp-4);
+}
+
+.tray,
+.recent {
+  display: grid;
+  gap: var(--sp-3);
+  align-content: start;
+  padding: var(--sp-4);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+
+.trayHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.trayHead h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.trayHead h2 svg {
+  width: 13px;
+  height: 13px;
+}
+
+.trayTools {
+  display: flex;
+  gap: 2px;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px 5px 5px;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--stroke-2);
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.chip[data-active='true'] {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+
+.chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-sm);
+  flex: none;
+}
+
+.chipLabel {
+  white-space: nowrap;
+}
+
+.strength {
+  padding-top: 2px;
+  border-top: 1px solid var(--stroke-1);
+}
+
+.trayNote {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+/* ------------------------------------------------------------- recent shots */
+
+.recentList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--sp-2);
+}
+
+.recentItem {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.recentItem img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.recentItem figcaption {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------- inspector */
+
+.inspectorNote {
+  margin: 0 0 var(--sp-2);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+}
+
+.bindingList {
+  display: grid;
+  gap: 4px;
+}
+
+.bindingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.bindingSelect {
+  min-width: 118px;
+  height: var(--control-h-sm);
+  padding: 0 6px;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: var(--fs-xs);
+}
+
+.bindingSelect:disabled {
+  opacity: 0.5;
+}
+
+.conflict {
+  margin: var(--sp-2) 0 0;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  font-size: var(--fs-xs);
+}
+
+/* -------------------------------------------------------------------- toast */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  transform: translateX(-50%);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-2);
+  color: var(--text-1);
+  font-size: var(--fs-xs);
+  z-index: var(--z-toast);
+}
+
+.toast button {
+  padding: 3px 7px;
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-2xs);
+}
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 1180px) {
+  .trays {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .headerActions {
+    justify-content: flex-start;
+  }
+
+  .device select {
+    max-width: none;
+  }
+
+  .body {
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
+
+@media (max-width: 560px) {
+  .headerActions {
+    gap: 6px;
+  }
+
+  .headerActions button {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .device {
+    flex: 1 1 100%;
+  }
+
+  .recentList {
+    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  }
+}

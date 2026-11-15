@@ -94,15 +94,24 @@ interface SelectControlProps {
   options: ReadonlyArray<{ value: string; label: string }>
   ariaLabel: string
   id?: string
+  disabled?: boolean
 }
 
-export function SelectControl({ value, onChange, options, ariaLabel, id }: SelectControlProps) {
+export function SelectControl({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  id,
+  disabled = false,
+}: SelectControlProps) {
   return (
     <select
       id={id}
       className={styles.select}
       value={value}
       aria-label={ariaLabel}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
     >
       {options.map((option) => (

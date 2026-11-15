@@ -28,6 +28,11 @@ export interface VisionStatus {
   captureWidth: number
   captureHeight: number
   processingWidth: number
+  /** Face landmarker state; 'off' until a workspace asks for faces. */
+  faceTracking: TrackingPhase | 'off'
+  faces: number
+  faceDelegate: 'gpu' | 'cpu' | null
+  faceMs: number
   error: VisionError | null
   setStatus: (patch: Partial<Omit<VisionStatus, 'setStatus'>>) => void
   reset: () => void
@@ -44,6 +49,10 @@ const initial = {
   captureWidth: 0,
   captureHeight: 0,
   processingWidth: 0,
+  faceTracking: 'off' as VisionStatus['faceTracking'],
+  faces: 0,
+  faceDelegate: null,
+  faceMs: 0,
   error: null,
 }
 

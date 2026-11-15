@@ -1,0 +1,364 @@
+/* Gallery workspace: a local photo library. Token driven, same surface
+   treatment as the rest of the application. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: var(--canvas-sunken);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex: none;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--stroke-1);
+  background: var(--surface-1);
+}
+
+.headerText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eyebrow {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.headerText h1 {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-tight);
+}
+
+.headerText p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+.headerTools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.count {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.body {
+  display: grid;
+  gap: var(--sp-4);
+  align-content: start;
+  padding: var(--sp-5);
+  min-width: 0;
+}
+
+.error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+
+.loading {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+/* -------------------------------------------------------------------- grid */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out);
+}
+
+.card:hover {
+  border-color: var(--stroke-2);
+  background: var(--surface-2);
+}
+
+.card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.cardName {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardDate {
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+}
+
+.placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+/* ------------------------------------------------------------------ dialog */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-5);
+  background: var(--overlay);
+  z-index: var(--z-modal);
+}
+
+.dialog {
+  display: grid;
+  gap: var(--sp-4);
+  width: min(920px, 100%);
+  max-height: 90dvh;
+  overflow: auto;
+  padding: var(--sp-4);
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+}
+
+.dialogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.dialogHead h2 {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+}
+
+.closeButton {
+  display: grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  border-color: var(--stroke-1);
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+.closeButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.dialogBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr);
+  gap: var(--sp-4);
+}
+
+.dialogImage {
+  display: grid;
+  place-items: center;
+  padding: var(--sp-2);
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+}
+
+.dialogImage img {
+  max-width: 100%;
+  max-height: 62dvh;
+  border-radius: var(--radius-sm);
+}
+
+.meta {
+  display: grid;
+  gap: var(--sp-3);
+  align-content: start;
+}
+
+.nameField {
+  display: grid;
+  gap: 4px;
+}
+
+.nameField span {
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+.nameField input {
+  height: var(--control-h);
+  padding: 0 8px;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.nameField input:focus {
+  outline: none;
+  border-color: var(--accent-line);
+}
+
+.detailList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.detailList > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.detailList dt {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+
+.detailList dd {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+
+.emptyAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.emptyAction svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* --------------------------------------------------------------- responsive */
+
+@media (max-width: 860px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .headerTools {
+    justify-content: flex-start;
+  }
+
+  .body {
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .dialogBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dialogImage img {
+    max-height: 42dvh;
+  }
+}
+
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  }
+
+  .backdrop {
+    padding: var(--sp-3);
+  }
+}

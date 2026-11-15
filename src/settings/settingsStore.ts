@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Locale } from '@/localization/i18n'
+import type { StaticGestureId } from '@/vision/types'
 
 export type ThemeMode = 'dark' | 'light' | 'system'
 export type AccentId = 'mint' | 'blue' | 'violet' | 'orange' | 'rose' | 'custom'
@@ -72,6 +73,23 @@ export interface AccessibilitySettings {
   mouseAltControls: boolean
 }
 
+/** Actions a control gesture can be bound to in the Gesture Camera. */
+export type CameraGestureAction =
+  | 'capture'
+  | 'nextFilter'
+  | 'previousFilter'
+  | 'toggleControls'
+  | 'toggleEffect'
+
+export type GestureBinding = StaticGestureId | 'none'
+
+export interface GestureSettings {
+  /** Master switch for the gesture controls. */
+  enabled: boolean
+  /** Which hand shape triggers which camera action. */
+  bindings: Record<CameraGestureAction, GestureBinding>
+}
+
 export interface SettingsState {
   appearance: AppearanceSettings
   language: LanguageSettings
@@ -79,12 +97,15 @@ export interface SettingsState {
   tracking: TrackingSettings
   performance: PerformanceSettings
   accessibility: AccessibilitySettings
+  gestures: GestureSettings
   setAppearance: (patch: Partial<AppearanceSettings>) => void
   setLanguage: (patch: Partial<LanguageSettings>) => void
   setCamera: (patch: Partial<CameraSettings>) => void
   setTracking: (patch: Partial<TrackingSettings>) => void
   setPerformance: (patch: Partial<PerformanceSettings>) => void
   setAccessibility: (patch: Partial<AccessibilitySettings>) => void
+  setGestures: (patch: Partial<GestureSettings>) => void
+  setGestureBinding: (action: CameraGestureAction, gesture: GestureBinding) => void
   resetAppearance: () => void
 }
 
@@ -149,6 +170,44 @@ export const defaultAccessibility: AccessibilitySettings = {
   mouseAltControls: true,
 }
 
+export const defaultGestures: GestureSettings = {
+  enabled: true,
+  bindings: {
+    capture: 'peace',
+    nextFilter: 'thumbs-up',
+    previousFilter: 'none',
+    toggleControls: 'open-palm',
+    toggleEffect: 'pinch',
+  },
+}
+
+/** Actions in the order the settings screen lists them. */
+export const CAMERA_GESTURE_ACTIONS: CameraGestureAction[] = [
+  'capture',
+  'nextFilter',
+  'previousFilter',
+  'toggleControls',
+  'toggleEffect',
+]
+
+/**
+ * Finds actions that share the same hand shape. The camera runs the first
+ * action of a conflicting pair, so the settings screen warns about it.
+ */
+export function conflictingBindings(
+  bindings: Record<CameraGestureAction, GestureBinding>,
+): CameraGestureAction[][] {
+  const groups = new Map<GestureBinding, CameraGestureAction[]>()
+  for (const action of CAMERA_GESTURE_ACTIONS) {
+    const gesture = bindings[action]
+    if (gesture === 'none') continue
+    const list = groups.get(gesture) ?? []
+    list.push(action)
+    groups.set(gesture, list)
+  }
+  return [...groups.values()].filter((group) => group.length > 1)
+}
+
 /** Preset values are a starting point; sliders can move away from them. */
 export const trackingPresets: Record<TrackingPreset, Partial<TrackingSettings>> = {
   stable: {
@@ -186,6 +245,7 @@ export const useSettings = create<SettingsState>()(
       tracking: defaultTracking,
       performance: defaultPerformance,
       accessibility: defaultAccessibility,
+      gestures: defaultGestures,
 
       setAppearance: (patch) => set({ appearance: { ...get().appearance, ...patch } }),
       setLanguage: (patch) => set({ language: { ...get().language, ...patch } }),
@@ -194,6 +254,14 @@ export const useSettings = create<SettingsState>()(
       setPerformance: (patch) => set({ performance: { ...get().performance, ...patch } }),
       setAccessibility: (patch) =>
         set({ accessibility: { ...get().accessibility, ...patch } }),
+      setGestures: (patch) => set({ gestures: { ...get().gestures, ...patch } }),
+      setGestureBinding: (action, gesture) =>
+        set({
+          gestures: {
+            ...get().gestures,
+            bindings: { ...get().gestures.bindings, [action]: gesture },
+          },
+        }),
       resetAppearance: () => set({ appearance: { ...defaultAppearance } }),
     }),
     {
@@ -206,6 +274,7 @@ export const useSettings = create<SettingsState>()(
         tracking: state.tracking,
         performance: state.performance,
         accessibility: state.accessibility,
+        gestures: state.gestures,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<SettingsState>
@@ -217,6 +286,14 @@ export const useSettings = create<SettingsState>()(
           tracking: { ...current.tracking, ...saved.tracking },
           performance: { ...current.performance, ...saved.performance },
           accessibility: { ...current.accessibility, ...saved.accessibility },
+          gestures: {
+            ...current.gestures,
+            ...saved.gestures,
+            bindings: {
+              ...current.gestures.bindings,
+              ...(saved.gestures?.bindings ?? {}),
+            },
+          },
         }
       },
     },

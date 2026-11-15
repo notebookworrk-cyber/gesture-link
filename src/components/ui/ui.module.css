@@ -263,6 +263,11 @@
   border-color: var(--stroke-2);
 }
 
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .sliderRow {
   display: grid;
   gap: 6px;

@@ -9,9 +9,9 @@ export const moduleStatus: Record<ModuleId, ModuleState> = {
   engine: 'building',
   signReader: 'building',
   whiteboard: 'ready',
-  camera: 'building',
+  camera: 'ready',
   training: 'planned',
-  gallery: 'planned',
+  gallery: 'ready',
 }
 
 export const engineBuild = '2.0.0'

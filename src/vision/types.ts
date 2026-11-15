@@ -52,9 +52,20 @@ export interface HandReading {
 export interface FrameReading {
   timestamp: number
   hands: HandReading[]
+  /** Detected faces, empty when face tracking is off or nothing is in view. */
+  faces: FaceReading[]
   inferenceMs: number
   /** Timestamp of the source video frame, when the browser exposes it. */
   sourceTime: number
+}
+
+export interface FaceReading {
+  /** Normalised image-space landmarks (478 points). */
+  landmarks: Landmark[]
+  /** Normalised bounding box of the face. */
+  box: { x: number; y: number; width: number; height: number }
+  /** Rotation of the eye line in radians; 0 when the head is level. */
+  roll: number
 }
 
 export interface VisionConfig {

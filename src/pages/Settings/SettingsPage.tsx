@@ -28,17 +28,22 @@ import { CameraPreview } from '@/components/vision/CameraPreview'
 import { LOCALES, localeMeta, useI18n, type Locale } from '@/localization/i18n'
 import type { MessageKey } from '@/localization/locales/en'
 import {
+  CAMERA_GESTURE_ACTIONS,
+  conflictingBindings,
   trackingPresets,
   useSettings,
   type AccentId,
+  type CameraGestureAction,
   type DelegatePreference,
   type Density,
+  type GestureBinding,
   type Handedness,
   type ProcessingQuality,
   type ThemeMode,
   type TrackingPreset,
 } from '@/settings/settingsStore'
 import { useVisionStatus } from '@/vision/visionStatus'
+import type { StaticGestureId } from '@/vision/types'
 import { formatBytes } from '@/utils/format'
 import styles from './settings.module.css'
 
@@ -581,8 +586,110 @@ function TrackingSection() {
           }
         />
       </div>
+      <GestureBindingSection />
     </Panel>
   )
+}
+
+const GESTURE_CHOICES: StaticGestureId[] = [
+  'none',
+  'open-palm',
+  'fist',
+  'point',
+  'peace',
+  'thumbs-up',
+  'pinch',
+  'three',
+]
+
+function GestureBindingSection() {
+  const { t } = useI18n()
+  const gestures = useSettings((state) => state.gestures)
+  const setGestures = useSettings((state) => state.setGestures)
+  const setGestureBinding = useSettings((state) => state.setGestureBinding)
+  const conflicts = conflictingBindings(gestures.bindings)
+
+  return (
+    <div className={styles.bindingBlock}>
+      <h3>{t('settings.gestureBindings')}</h3>
+      <p className={styles.previewHint}>{t('settings.gestureBindingsHint')}</p>
+      <div className={styles.rows}>
+        <Field
+          label={t('settings.gesturesEnabled')}
+          hint={t('settings.gesturesEnabledHint')}
+          control={
+            <Toggle
+              label={t('settings.gesturesEnabled')}
+              checked={gestures.enabled}
+              onChange={(enabled) => setGestures({ enabled })}
+            />
+          }
+        />
+        {CAMERA_GESTURE_ACTIONS.map((action) => (
+          <Field
+            key={action}
+            label={t(bindingLabelKey(action))}
+            control={
+              <SelectControl
+                ariaLabel={t(bindingLabelKey(action))}
+                value={gestures.bindings[action]}
+                disabled={!gestures.enabled}
+                onChange={(value) => setGestureBinding(action, value as GestureBinding)}
+                options={GESTURE_CHOICES.map((choice) => ({
+                  value: choice,
+                  label:
+                    choice === 'none'
+                      ? t('settings.gestureNone')
+                      : t(gestureLabelKey(choice)),
+                }))}
+              />
+            }
+          />
+        ))}
+      </div>
+      {conflicts.length > 0 ? (
+        <p className={styles.conflict} role="alert">
+          {t('settings.gestureConflict')}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function bindingLabelKey(action: CameraGestureAction): MessageKey {
+  switch (action) {
+    case 'capture':
+      return 'cam.actionCapture'
+    case 'nextFilter':
+      return 'cam.actionNextFilter'
+    case 'previousFilter':
+      return 'cam.actionPreviousFilter'
+    case 'toggleControls':
+      return 'cam.actionToggleControls'
+    case 'toggleEffect':
+      return 'cam.actionToggleEffect'
+  }
+}
+
+function gestureLabelKey(gesture: StaticGestureId): MessageKey {
+  switch (gesture) {
+    case 'open-palm':
+      return 'gesture.openPalm'
+    case 'fist':
+      return 'gesture.fist'
+    case 'point':
+      return 'gesture.point'
+    case 'peace':
+      return 'gesture.peace'
+    case 'thumbs-up':
+      return 'gesture.thumbsUp'
+    case 'pinch':
+      return 'gesture.pinch'
+    case 'three':
+      return 'gesture.three'
+    default:
+      return 'gesture.none'
+  }
 }
 
 function PerformanceSection() {
