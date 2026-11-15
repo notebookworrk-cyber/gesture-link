@@ -615,4 +615,6 @@ export const fr: Record<MessageKey, string> = {
     'Quand l’option est désactivée, les actions de caméra ne se déclenchent que depuis les boutons du studio.',
   'settings.gestureConflict': 'Deux actions utilisent la même forme de main. Seule la première s’exécute.',
   'settings.gestureNone': 'Non affecté',
+
+  'caption.mode': 'Mode',
 }

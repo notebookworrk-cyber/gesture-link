@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Locale } from '@/localization/i18n'
 import type { StaticGestureId } from '@/vision/types'
+import type { CaptionSettings } from '@/captions/types'
+import { applyPreset, defaultCaptionSettings } from '@/captions/presets'
 
 export type ThemeMode = 'dark' | 'light' | 'system'
 export type AccentId = 'mint' | 'blue' | 'violet' | 'orange' | 'rose' | 'custom'
@@ -97,6 +99,7 @@ export interface SettingsState {
   tracking: TrackingSettings
   performance: PerformanceSettings
   accessibility: AccessibilitySettings
+  captions: CaptionSettings
   gestures: GestureSettings
   setAppearance: (patch: Partial<AppearanceSettings>) => void
   setLanguage: (patch: Partial<LanguageSettings>) => void
@@ -104,6 +107,8 @@ export interface SettingsState {
   setTracking: (patch: Partial<TrackingSettings>) => void
   setPerformance: (patch: Partial<PerformanceSettings>) => void
   setAccessibility: (patch: Partial<AccessibilitySettings>) => void
+  setCaptions: (patch: Partial<CaptionSettings>) => void
+  setCaptionPreset: (preset: CaptionSettings['preset']) => void
   setGestures: (patch: Partial<GestureSettings>) => void
   setGestureBinding: (action: CameraGestureAction, gesture: GestureBinding) => void
   resetAppearance: () => void
@@ -245,6 +250,7 @@ export const useSettings = create<SettingsState>()(
       tracking: defaultTracking,
       performance: defaultPerformance,
       accessibility: defaultAccessibility,
+      captions: { ...defaultCaptionSettings },
       gestures: defaultGestures,
 
       setAppearance: (patch) => set({ appearance: { ...get().appearance, ...patch } }),
@@ -254,6 +260,8 @@ export const useSettings = create<SettingsState>()(
       setPerformance: (patch) => set({ performance: { ...get().performance, ...patch } }),
       setAccessibility: (patch) =>
         set({ accessibility: { ...get().accessibility, ...patch } }),
+      setCaptions: (patch) => set({ captions: { ...get().captions, ...patch } }),
+      setCaptionPreset: (preset) => set({ captions: applyPreset(get().captions, preset) }),
       setGestures: (patch) => set({ gestures: { ...get().gestures, ...patch } }),
       setGestureBinding: (action, gesture) =>
         set({
@@ -274,6 +282,7 @@ export const useSettings = create<SettingsState>()(
         tracking: state.tracking,
         performance: state.performance,
         accessibility: state.accessibility,
+        captions: state.captions,
         gestures: state.gestures,
       }),
       merge: (persisted, current) => {
@@ -286,6 +295,7 @@ export const useSettings = create<SettingsState>()(
           tracking: { ...current.tracking, ...saved.tracking },
           performance: { ...current.performance, ...saved.performance },
           accessibility: { ...current.accessibility, ...saved.accessibility },
+          captions: { ...current.captions, ...saved.captions },
           gestures: {
             ...current.gestures,
             ...saved.gestures,

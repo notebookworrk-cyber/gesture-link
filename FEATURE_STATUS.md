@@ -5,7 +5,7 @@ milestone. A feature is only listed under **Completed** when it has been run in
 a browser; model accuracy that needs a real hand in front of a camera is never
 claimed from a headless test.
 
-Last updated: milestone 4 (Gesture Camera and Gallery).
+Last updated: milestone 5 (Sign Reader and Captions).
 
 ## Completed
 

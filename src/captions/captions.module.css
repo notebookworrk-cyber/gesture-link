@@ -1,0 +1,61 @@
+/* Caption presentation. The colours and the size come from the caption
+   settings, the layout from the design tokens. */
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--stroke-1);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.caption[data-visible='false'] {
+  display: none;
+}
+
+.caption[data-position='top'] {
+  align-self: flex-start;
+}
+
+.caption[data-position='center'] {
+  align-self: center;
+  text-align: center;
+}
+
+.caption[data-position='bottom'] {
+  align-self: flex-end;
+}
+
+.caption[data-outline='true'] .text {
+  text-shadow:
+    -1px -1px 0 var(--canvas),
+    1px -1px 0 var(--canvas),
+    -1px 1px 0 var(--canvas),
+    1px 1px 0 var(--canvas);
+}
+
+.line {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.text {
+  display: block;
+}
+
+.secondary {
+  display: block;
+  font-size: 0.8em;
+  opacity: 0.78;
+}
+
+.placeholder {
+  color: var(--text-3);
+  font-size: 0.6em;
+  font-weight: 400;
+}
