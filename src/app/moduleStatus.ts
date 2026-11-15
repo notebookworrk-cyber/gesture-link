@@ -8,7 +8,7 @@ export type ModuleState = 'ready' | 'building' | 'planned' | 'degraded'
 export const moduleStatus: Record<ModuleId, ModuleState> = {
   engine: 'building',
   signReader: 'building',
-  whiteboard: 'building',
+  whiteboard: 'ready',
   camera: 'building',
   training: 'planned',
   gallery: 'planned',

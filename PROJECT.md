@@ -36,7 +36,11 @@
    extraction, gesture state machine and camera/tracking/performance settings —
    implemented and browser-verified with a synthetic camera. Real-hand accuracy
    is explicitly unverified.
-3. **Air Whiteboard** — fingertip drawing, toolbar, undo/redo, exports.
+3. **Air Whiteboard** — brushes, shapes, text, notes, images, selection and
+   history, per-board documents, presentation mode, PNG/JPEG/SVG/PDF export and
+   gesture drawing — implemented and browser-verified at 1440, 1280, 1024 and
+   390 px in English and Japanese, including four real export downloads. Real-hand
+   air drawing is explicitly unverified.
 4. **Gesture Camera and Gallery** — peace-sign capture, countdown, IndexedDB.
 5. **Sign Reader and captions** — trainable classifier, finger counting,
    sentence builder, speech.
@@ -50,7 +54,10 @@
 - Every milestone runs `npm run verify` plus `scripts/visual-check.mjs` against
   the production build at 1440, 1280, 1024 and 390 px, in at least one non-Latin
   locale. Camera work also runs `scripts/vision-check.mjs`, which uses Chrome's
-  synthetic capture device (`--use-fake-device-for-media-stream`).
+  synthetic capture device (`--use-fake-device-for-media-stream`). The whiteboard
+  runs `scripts/whiteboard-check.mjs`, which draws, selects, renames, reloads,
+  downloads every export format, enters presentation mode and opens the gesture
+  dock with the same synthetic camera.
 - Synthetic-camera results prove wiring, lifecycle and status reporting only.
   They are always reported separately from real-webcam validation.
 - Recognition accuracy is only reported from measurements on real recordings,

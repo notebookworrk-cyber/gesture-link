@@ -34,6 +34,7 @@ export default tseslint.config(
         // Callbacks passed to Playwright's page.evaluate run in the browser.
         document: 'readonly',
         window: 'readonly',
+        HTMLCanvasElement: 'readonly',
       },
     },
   },

@@ -84,8 +84,11 @@
 }
 
 .iconSm {
+  /* Square icon buttons must drop the label padding, otherwise the content box
+     collapses to zero and `svg { max-width: 100% }` hides the icon. */
   width: var(--control-h-sm);
   height: var(--control-h-sm);
+  padding: 0;
 }
 
 .sm {
@@ -110,6 +113,32 @@
   display: grid;
   gap: 6px;
   padding: 7px 0;
+}
+
+/* A slider track is useless when it shares a row with its label: inside a
+   narrow inspector it wraps into a short stub. Give the control the full row
+   and let the value sit above the track, right-aligned. */
+.field:has(.sliderRow) {
+  display: grid;
+  /* The row's `justify-content: space-between` would leave the auto column at
+     its content width, so state the full-width column explicitly. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.field:has(.sliderRow) .fieldControl {
+  display: block;
+}
+
+.field:has(.sliderRow) .sliderRow {
+  padding: 0;
+}
+
+/* The control column is a flex row, so a slider inside it would otherwise sit
+   at its intrinsic 130px instead of filling the field. */
+.fieldControl > .sliderRow {
+  flex: 1;
+  min-width: 0;
 }
 
 .fieldText {
