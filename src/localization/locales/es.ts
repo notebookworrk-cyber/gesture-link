@@ -502,6 +502,7 @@ export const es: Record<MessageKey, string> = {
   'wb.gestureLost': 'Mano perdida',
   'wb.gestureTracking': 'Mano detectada',
   'wb.gestureReady': 'Mano detectada: pellizca para dibujar',
+  'wb.gesturePickTool': 'Elige un lápiz, una forma, el láser o el borrador para dibujar',
   'wb.gestureNoHand': 'No hay ninguna mano en la imagen',
 
   'wb.gestureSection': 'Dibujo en el aire',

@@ -499,6 +499,7 @@ export const en = {
   'wb.gestureLost': 'Hand lost',
   'wb.gestureTracking': 'Hand tracked',
   'wb.gestureReady': 'Hand tracked — pinch to draw',
+  'wb.gesturePickTool': 'Pick a pen, shape, laser or eraser to draw',
   'wb.gestureNoHand': 'No hand in view',
 
   'wb.gestureSection': 'Air drawing',

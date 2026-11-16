@@ -493,6 +493,7 @@ export const ja: Record<MessageKey, string> = {
   'wb.gestureLost': '手が見つかりません',
   'wb.gestureTracking': '手を追跡中',
   'wb.gestureReady': '手を追跡中 — ピンチで描画',
+  'wb.gesturePickTool': 'ペン、図形、レーザー、消しゴムのいずれかを選んでください',
   'wb.gestureNoHand': '視野に手がありません',
 
   'wb.gestureSection': 'エア描画',

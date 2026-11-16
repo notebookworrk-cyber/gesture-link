@@ -511,6 +511,7 @@ export const fr: Record<MessageKey, string> = {
   'wb.gestureLost': 'Main perdue',
   'wb.gestureTracking': 'Main suivie',
   'wb.gestureReady': 'Main suivie — pincez pour dessiner',
+  'wb.gesturePickTool': 'Choisissez un stylo, une forme, le laser ou la gomme pour dessiner',
   'wb.gestureNoHand': 'Aucune main dans le champ',
 
   'wb.gestureSection': 'Dessin dans l’air',

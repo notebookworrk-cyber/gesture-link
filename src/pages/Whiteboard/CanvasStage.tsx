@@ -960,11 +960,15 @@ export function CanvasStage({ onPickImage, presentation }: CanvasStageProps) {
 
   const gestureActive = gesture.enabled
   const cameraLive = camera === 'live'
+  const drawableTool =
+    isInkTool(tool) || isShapeTool(tool) || tool === 'eraser' || tool === 'laser'
   const hudText = !cameraLive
     ? t('wb.gestureCameraOff')
     : tracking === 'lost' || hands === 0
       ? t('wb.gestureNoHand')
-      : t('wb.gestureReady')
+      : drawableTool
+        ? t('wb.gestureReady')
+        : t('wb.gesturePickTool')
 
   return (
     <div

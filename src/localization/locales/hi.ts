@@ -495,6 +495,7 @@ export const hi: Record<MessageKey, string> = {
   'wb.gestureLost': 'हाथ नहीं मिला',
   'wb.gestureTracking': 'हाथ ट्रैक हो रहा है',
   'wb.gestureReady': 'हाथ ट्रैक — खींचने के लिए पिंच करें',
+  'wb.gesturePickTool': 'चित्र बनाने के लिए पेन, आकार, लेज़र या इरेज़र चुनें',
   'wb.gestureNoHand': 'दृश्य में कोई हाथ नहीं',
 
   'wb.gestureSection': 'एयर ड्रॉइंग',

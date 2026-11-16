@@ -118,6 +118,14 @@ describe('shape classification', () => {
     expect(classifyGesture(fingers({ index: true, extendedCount: 1 }), 0.42)).toBe('point')
   })
 
+  it('accepts a pinch whose index finger is curled', () => {
+    expect(classifyGesture(fingers(), 0.12)).toBe('pinch')
+  })
+
+  it('keeps a closed fist out of the pinch class', () => {
+    expect(classifyGesture(fingers(), 0.24)).toBe('fist')
+  })
+
   it('moves the pinch threshold with the sensitivity setting', () => {
     expect(classifyGesture(fingers({ index: true, extendedCount: 1 }), 0.34, 0.9)).toBe(
       'pinch',

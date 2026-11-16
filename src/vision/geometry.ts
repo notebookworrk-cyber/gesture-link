@@ -124,7 +124,13 @@ export function classifyGesture(
   // wider gap between the tips.
   const pinchThreshold = 0.30 + (pinchSensitivity - 0.5) * 0.16
 
-  if (pinchRatio < pinchThreshold && index && extendedCount < 4) return 'pinch'
+  // Pinching normally bends the index finger, so requiring an extended index
+  // missed most real pinches. Tips that are actually touching are accepted
+  // even when the index is curled; the tighter ratio keeps a closed fist (whose
+  // thumb rests on the curled fingers) out of the pinch class.
+  if (pinchRatio < pinchThreshold && (index || pinchRatio < pinchThreshold * 0.6)) {
+    return 'pinch'
+  }
   if (extendedCount === 4) return 'open-palm'
   if (index && middle && !ring && !pinky) return 'peace'
   if (index && middle && ring && !pinky) return 'three'
