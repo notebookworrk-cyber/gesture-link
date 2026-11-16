@@ -912,8 +912,17 @@ export function CanvasStage({ onPickImage, presentation }: CanvasStageProps) {
     const unsubscribe = useWhiteboard.subscribe(() => scheduleDraw())
     return () => {
       unsubscribe()
-      if (drawRafRef.current) cancelAnimationFrame(drawRafRef.current)
-      if (overlayRafRef.current) cancelAnimationFrame(overlayRafRef.current)
+      // Reset the ids as well as cancelling: StrictMode runs the mount twice in
+      // development, and a stale non-zero id would make every later
+      // scheduleDraw() return early, leaving the board blank.
+      if (drawRafRef.current) {
+        cancelAnimationFrame(drawRafRef.current)
+        drawRafRef.current = 0
+      }
+      if (overlayRafRef.current) {
+        cancelAnimationFrame(overlayRafRef.current)
+        overlayRafRef.current = 0
+      }
     }
   }, [])
 
