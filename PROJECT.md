@@ -12,7 +12,7 @@
 | React 19 + TypeScript + Vite, npm | The spec requires React and TypeScript. pnpm crashed on this machine (`UV_HANDLE_CLOSING` assertion) and its registry fetch failed repeatedly, so npm is the package manager. The npm cache lives on `D:` because the system drive is nearly full. |
 | `@mediapipe/tasks-vision` **0.10.35** | Pinned to the last stable 0.10 line. The 1.x releases changed the wasm layout and were not needed for landmark detection. |
 | No Gesture Recognizer task | MediaPipe's recogniser only knows seven generic gestures (thumbs up, victory, etc.). Presenting those as ISL would be dishonest, so it is not used. |
-| Hand and face landmarkers only | Two models, about 11.6 MB total, both downloaded once and served locally. |
+| Hand and face landmarkers only | Two models, about 11.6 MB total. They are bundled into `public/models` for offline use and requested from Google's MediaPipe model store first, because the GitHub Pages copy of the hand model was measured at roughly 60 s on a phone connection against about 1 s from Google storage; the local file is the fallback. |
 | Canvas 2D | Sufficient for landmark overlays, the whiteboard and the photo studio composition; avoids a WebGL rendering layer on a 2 GB GPU. |
 | Hand-written classifiers | The training studio uses kNN/MLP implemented in TypeScript. No TensorFlow.js dependency. |
 | zustand | Small, no provider tree, persistence middleware for settings. |
