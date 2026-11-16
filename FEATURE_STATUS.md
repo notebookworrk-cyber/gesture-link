@@ -71,3 +71,24 @@ Last updated: milestone 6 (Sign Reader, captions and Training Studio code).
   not used as one. Recognition runs on classes trained locally.
 - No accuracy figure will be published without a measured evaluation on real
   recordings.
+
+## Evaluated and rejected: public hand-shape dataset
+
+The Kaggle dataset `aryarishabh/hand-gesture-recognition-dataset` (CC0) was
+downloaded and trained on 2026-11-16 to see whether it can feed the sign reader.
+It cannot, and nothing from it ships.
+
+- Contents: 24,000 images, 20 classes, 50x50 grayscale binary hand silhouettes
+  from an IR camera (900 train / 300 test per class). Labels are the numbers
+  `0`-`19` only; the dataset documents no gesture or sign meaning.
+- Measured: a 625-pixel -> 96-ReLU -> 20-softmax model trained in Node reached
+  **99.87 % test accuracy (5,992 / 6,000)** after 20 epochs, with a 100 %
+  validation slice. A nearest-centroid baseline that never iterates reaches
+  98.40 %, and train/test share 0 identical images, so the score is real
+  separability rather than leakage.
+- Rejected because the silhouettes need background removal and cropping before
+  a webcam frame can match them, the classes carry no sign-language labels, and
+  the existing pipeline consumes MediaPipe's 21 landmarks (69 features), which
+  50x50 silhouettes cannot provide. Class `0` also mixes two poses, so part of
+  the score comes from the dataset's own label noise.
+
