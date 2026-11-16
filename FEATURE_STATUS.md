@@ -5,7 +5,7 @@ milestone. A feature is only listed under **Completed** when it has been run in
 a browser; model accuracy that needs a real hand in front of a camera is never
 claimed from a headless test.
 
-Last updated: milestone 5 (Sign Reader and Captions).
+Last updated: milestone 6 (Sign Reader, captions and Training Studio code).
 
 ## Completed
 
@@ -13,7 +13,7 @@ Last updated: milestone 5 (Sign Reader and Captions).
 | --- | --- |
 | Application shell | Collapsible sidebar (desktop rail), mobile off-canvas drawer with close control, breadcrumb top bar, camera/tracking status chips, context inspector that is inline at ≥1180 px and a drawer below that, skip link, Escape handling, focus return to the menu button. |
 | Design system | Token-driven colour, type, spacing, radius, motion and depth. Dark and light themes, five preset accents plus a custom colour, three densities, larger text, higher contrast and reduce-motion overrides applied through `data-*` attributes on `<html>`. No hardcoded colours in page components. |
-| Internationalisation | Six complete UI catalogues (English, Hindi, Japanese, Spanish, French, German) typed against the English key set, so a missing key is a compile error. Searchable language picker with native language names. Latin, Devanagari and CJK typography overrides (line height, tracking) verified in screenshots. |
+| Internationalisation | Six complete UI catalogues (English, Hindi, Japanese, Spanish, French, German) typed against the English key set, so a missing key is a compile error. Every reader, caption and training string is translated in all six languages. Searchable language picker with native language names. Latin, Devanagari and CJK typography overrides (line height, tracking) verified in screenshots. |
 | Appearance persistence | Theme, accent, density, layout flags and language survive a reload (zustand `persist`, versioned key `gesturelink.settings.v1`). An inline pre-paint script applies the saved theme to avoid a flash. |
 | Home workspace | Module list driven by the build manifest with honest states, live readiness probes (WebGL renderer string, camera permission state, IndexedDB, storage usage/quota, model file availability), privacy notes. |
 | Settings | Appearance, Camera, Hand tracking, Performance, Language, Accessibility, Data and storage, About. Real storage estimate; language note states that changing the UI language does not change recognition. Per-setting explanations on every row. |
@@ -22,7 +22,6 @@ Last updated: milestone 5 (Sign Reader and Captions).
 | Tracking math | One Euro smoothing per handedness, finger state detection with adjustable PIP and reach thresholds, geometric shape classification (open palm, fist, point, peace, thumbs up, pinch, three, none), pinch distance normalised by palm span, palm speed for future gestures, hold/cooldown/dropout state machine that fires a held shape exactly once. |
 | Camera preview | Mirrored preview with a letterbox-aware landmark overlay drawn at device pixel ratio, live capture size, frame rate, inference time, hand count, inference width and the delegate that actually ran. Honest empty, starting, paused and error states. |
 | Performance controls | Quality preset, adaptive step-down, delegate (auto/GPU/CPU; the preview always reports what ran) and low-power mode. Capture settings restart the stream, landmarker options reload the model, thresholds and timings apply without a restart. |
-| Module placeholders | Sign Reader and Training Studio render an explicit "being assembled" state with build status in the inspector. No fake controls or mock recognition. |
 | Air Whiteboard | Six brushes with pressure-aware strokes and One Euro smoothing; line/arrow/double-arrow/rectangle/rounded/ellipse/circle/triangle/polygon with fill, outline and corner radius; text, sticky notes and image objects with an inline editor; laser pointer, ruler, eraser (stroke and object modes); marquee/lasso/shift selection, move, eight-handle resize, rotation, grouping, lock, duplicate, align, arrange, nudge, and per-page undo/redo. Structured object model in a zustand store with debounced IndexedDB autosave, per-board and per-page documents (rename, duplicate, delete), infinite canvas with pan/zoom/fit, grid/dots/graph/blank paper with paper colours, and presentation mode that fits the drawing and restores the editor view on exit. Export to PNG, JPEG, SVG and PDF of the canvas only, at 1–3×, with an optional transparent background. |
 | Whiteboard input | MediaPipe hand landmarks drive the board: index fingertip cursor, pinch to draw, open palm to pause, two-finger pan (or a configurable quick action), optional fist eraser, motion-range gain and hover. The camera dock shows the live preview, capture size, frame rate, inference time, inference width and the delegate that actually ran; the HUD always explains the tracking state. |
 | Gesture Camera | Photo studio on one canvas: the live camera frame, the selected filter and the enabled stickers are composited into a single surface, so the preview is exactly what gets captured. Eight real filters (natural, warm, cool, black and white, vintage, soft contrast, high contrast, monochrome) applied as CSS filter operations with an adjustable strength, six face-anchored sticker families (glasses, hat, crown, ears, mustache, sparkles), camera switching, shutter button, three second countdown, recent shots strip, and a live inspector with the gesture readout, face count, frame rate, inference times, delegate and capture size. Photographs are stored as blobs in IndexedDB with a thumbnail, and never leave the device. |
@@ -43,30 +42,32 @@ Last updated: milestone 5 (Sign Reader and Captions).
 | GPU delegate | The preview reported `GPU` in headless Chrome with SwiftShader. | The 940M path was not measured. The reported delegate in a real session is the only claim that will be made. |
 | Adaptive quality | It stepped 480 → 320 px when inference exceeded the budget under SwiftShader. | Behaviour on the Intel HD 520 / 940M pair is unmeasured; thresholds may need adjustment after real use. |
 | Face landmarker | `models/face_landmarker.task` ships, is served locally and now runs inside the Gesture Camera for the sticker anchors. | No real face was in front of the webcam, so the anchor placement and the sticker fit were never seen on a face. The synthetic device has no face, which is why the studio honestly draws no sticker in the browser test. |
-| Bundle output | Production build succeeds: 1018 kB app JS (gzip 314 kB) after the camera and gallery shipped, 136 kB vision chunk (gzip 41 kB), 51 kB React chunk. | Not split yet; a dynamic route split for the workspaces is the next bundle task. |
+| Sign Language Reader | Three recognition modes with the difference stated in the interface: **count** counts extended fingers from the landmarks and reads numbers; **shape** reports the seven geometric control hand shapes the engine already classifies and says they are controls, not sign words; **model** runs the locally trained kNN classifier over hand-shape features. A temporal stabiliser only accepts a reading that stays the same for a short hold. Optional auto-add appends accepted signs to a sentence. The sentence builder supports space, undo-last, clear, copy, a real `.txt` download, saving to IndexedDB, and reading aloud through `speechSynthesis` with an honest "no voice for this language" message. The transcript list loads and deletes saved sentences. All strings exist in the six catalogues. | The synthetic camera has no hand, so the browser can only be checked for an honest "no hand" state. Real recognition, hold timing, speech playback and transcript persistence across a reload have not been exercised in a browser. There are no unit tests for the stabiliser yet. |
+| Captions | `CaptionEngine` turns readings into on-screen lines with six modes (live, words, sentences, subtitle, large, bilingual), configurable punctuation, capitalisation, line length, line count, duration, font, size, colour, background, outline, position and auto-scroll, with presets. The reader renders the caption area and the inspector switches mode and visibility. Bilingual mode only adds a second line when a real translation exists; the UI says that no translation model is bundled. | No browser run has checked the line timing, expiry, bilingual fallback or the subtitle and large presets on screen, and the engine has no unit tests. Caption size, font and colours have no Settings controls. |
+| Training Studio | Label management with four categories and an optional description; sample capture in takes, written to IndexedDB in batches; a named label must be selected before recording; per-label sample counts and review with individual removal. Training builds greedy farthest-point prototypes per label (1–12) from hand-shape features and stores the model in IndexedDB. Evaluation uses a held-out group split, so samples from one take never appear in both sets, and reports accuracy, unknown rate, sample counts and per-label precision and recall. Dataset export writes a real JSON file; import validates it and reports empty or invalid files. Labels, samples, models and transcripts are designed to survive a reload. | No end-to-end browser run with the synthetic camera yet, and no unit tests cover the prototype builder, the held-out evaluator or the export format. Real classifier accuracy is unmeasured and will only be reported from a recorded evaluation, never estimated. |
+| Bundle output | Production build succeeds: 1,099 kB app JS (gzip 338 kB) after the reader, captions and training shipped, 136 kB vision chunk (gzip 41 kB), 51 kB React chunk. | Not split yet; a dynamic route split for the workspaces is the next bundle task. |
 
 ## Partial
 
 | Area | State |
 | --- | --- |
-| Settings surface | Camera, Hand tracking (including the camera gesture bindings), Performance and Language are implemented. Caption visibility and caption size still have no UI until captions ship. |
-| Accessibility settings | Large text, contrast and reduce-motion are wired. Captions remain store-only. |
-| Module status | Statuses come from `src/app/moduleStatus.ts`. The whiteboard, the Gesture Camera and the Gallery read "Ready"; Sign Reader reads "In build" and Training Studio "Planned" until they pass their own browser test. |
-| Gesture events | The engine emits one event per held shape with cooldown, and workspaces can subscribe; the whiteboard consumes fingertip, pinch, palm, peace and fist states directly, and the camera maps the same events to its actions. |
+| Settings surface | Camera, Hand tracking (including the camera gesture bindings), Performance, Language and Accessibility are implemented. Caption **mode** and **visibility** live in the Sign Reader inspector; caption size, font and colours have engine support but no Settings controls yet (the `large` preset follows the larger-text accessibility flag). |
+| Accessibility settings | Large text, contrast and reduce-motion are wired. Captions are wired through the reader inspector but are still not exposed in the Accessibility section. |
+| Module status | Statuses come from `src/app/moduleStatus.ts`. Every workspace reads "Ready"; the shared engine still reads "In build" until the cross-workspace summary ships. |
+| Gesture events | The engine emits one event per held shape with cooldown, and workspaces can subscribe; the whiteboard consumes fingertip, pinch, palm, peace and fist states directly, the camera maps the same events to its actions, and the reader consumes the shared hand reading. |
+| Global Gesture Intelligence Engine | The vision engine, classifier and caption pipeline are shared across workspaces, but there is no aggregated cross-workspace dashboard yet. |
 
 ## Not implemented
 
-- Sign Language Reader: trainable kNN classifier, finger-count mode, sentence builder, captions, speech output.
-- Training Studio: sample collection, class management, training, evaluation, export/import.
-- Persistent storage (IndexedDB) for training data. Photos and whiteboards already persist to IndexedDB.
-- Speech synthesis and translation. The translation selector only stores a preference; no translation model is bundled.
+- Speech synthesis in languages the browser has no voice for, and any translation model. The caption language selector only chooses a voice language; no translation is bundled, and bilingual mode stays single-line without one.
 - Keyboard shortcut overlay behind the top-bar help affordance.
 - Deployment workflow (GitHub Pages or other host).
+- Route-level code splitting for the bundles listed above.
 
 ## Explicit non-goals for this build
 
 - No pre-trained Indian Sign Language model is bundled. MediaPipe ships a
   seven-gesture generic recogniser, which is not a sign language model, so it is
-  not used as one. Recognition will run on classes trained locally.
+  not used as one. Recognition runs on classes trained locally.
 - No accuracy figure will be published without a measured evaluation on real
   recordings.

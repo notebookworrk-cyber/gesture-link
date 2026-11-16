@@ -13,14 +13,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Segmented, Toggle } from '@/components/ui/Controls'
-import { Panel } from '@/components/ui/Panel'
 import { Workspace } from '@/components/layout/Workspace'
 import { CameraPreview } from '@/components/vision/CameraPreview'
 import { CaptionView } from '@/captions/CaptionView'
 import { CaptionEngine } from '@/captions/engine'
 import { speak } from '@/captions/speech'
 import type { CaptionLine } from '@/captions/types'
-import { useI18n } from '@/localization/i18n'
+import { localeMeta, useI18n } from '@/localization/i18n'
 import type { MessageKey } from '@/localization/locales/en'
 import { useSettings } from '@/settings/settingsStore'
 import { classify } from '@/signs/classifier'
@@ -231,7 +230,7 @@ export function SignReaderPage() {
     const language = useSettings.getState().language
     const ok = speak(text, {
       voiceName: language.voice,
-      lang: language.captions === 'none' ? 'en-US' : language.captions,
+      lang: localeMeta[language.captions].tag,
     })
     setNotice(ok ? t('reader.spoken') : t('reader.speechUnavailable'))
   }, [t, text])

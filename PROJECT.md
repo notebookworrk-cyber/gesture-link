@@ -50,11 +50,19 @@
    1440, 1280, 1024 and 390 px in English and Japanese, including a real photo
    download. Real-hand triggering and sticker placement on a real face are
    explicitly unverified.
-5. **Sign Reader and captions** — trainable classifier, finger counting,
-   sentence builder, speech.
-6. **Training Studio** — sample collection, training, evaluation, import/export.
-7. **Integration and release** — keyboard shortcuts, performance pass,
-   documentation, push to `main`.
+5. **Sign Reader and captions** — three recognition modes (finger count, control
+   shapes, locally trained classifier) with a temporal stabiliser; sentence
+   builder with copy, `.txt` export, IndexedDB transcript saving and speech
+   output; a caption engine with six modes and presets, surfaced in the reader
+   inspector — implemented and typechecked. Real-hand recognition, speech and
+   browser behaviour are explicitly unverified.
+6. **Training Studio** — labels with categories, take-based sample capture into
+   IndexedDB, prototype training, held-out evaluation with per-label precision
+   and recall, and JSON dataset export/import — implemented and typechecked. The
+   browser run and any real accuracy measurement are still outstanding.
+7. **Integration and release** — keyboard shortcuts, performance pass, bundle
+   splitting, documentation, push to `main`. The Global Gesture Intelligence
+   Engine dashboard is the remaining shared-engine work.
 
 ## Verification policy
 
