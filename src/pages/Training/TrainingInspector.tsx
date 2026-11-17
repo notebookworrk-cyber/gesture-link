@@ -51,24 +51,31 @@ export function TrainingInspector({
     <>
       <Panel title={t('training.model')}>
         {model ? (
-          <dl className={styles.detailList}>
-            <div>
-              <dt>{t('training.modelSamples')}</dt>
-              <dd>{formatNumber(model.sampleCount)}</dd>
-            </div>
-            <div>
-              <dt>{t('training.prototypes')}</dt>
-              <dd>{formatNumber(model.prototypesPerLabel)}</dd>
-            </div>
-            <div>
-              <dt>{t('training.modelSigns')}</dt>
-              <dd>{formatNumber(model.labels.length)}</dd>
-            </div>
-            <div>
-              <dt>{t('training.modelTrained')}</dt>
-              <dd>{formatDate(model.trainedAt, { dateStyle: 'medium' })}</dd>
-            </div>
-          </dl>
+          <>
+            <dl className={styles.detailList}>
+              <div>
+                <dt>{t('training.modelSamples')}</dt>
+                <dd>{formatNumber(model.sampleCount)}</dd>
+              </div>
+              <div>
+                <dt>{t('training.prototypes')}</dt>
+                <dd>{formatNumber(model.prototypesPerLabel)}</dd>
+              </div>
+              <div>
+                <dt>{t('training.modelSigns')}</dt>
+                <dd>{formatNumber(model.labels.length)}</dd>
+              </div>
+              <div>
+                <dt>{t('training.modelTrained')}</dt>
+                <dd>{formatDate(model.trainedAt, { dateStyle: 'medium' })}</dd>
+              </div>
+            </dl>
+            {model.ignoredSamples ? (
+              <p className={styles.note}>
+                {t('training.ignoredSamples', { count: formatNumber(model.ignoredSamples) })}
+              </p>
+            ) : null}
+          </>
         ) : (
           <p className={styles.note}>{t('training.noModel')}</p>
         )}
@@ -158,6 +165,13 @@ export function TrainingInspector({
               </table>
             ) : null}
             <p className={styles.note}>{t('training.evaluationNote')}</p>
+            {evaluation.ignoredTestCount ? (
+              <p className={styles.note}>
+                {t('training.ignoredSamples', {
+                  count: formatNumber(evaluation.ignoredTestCount),
+                })}
+              </p>
+            ) : null}
           </>
         )}
         {error ? (

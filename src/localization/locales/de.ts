@@ -693,7 +693,7 @@ export const de: Record<MessageKey, string> = {
   'training.descriptionPlaceholder': 'Optionale Notiz zu dieser Gebärde',
   'training.addLabel': 'Etikett hinzufügen',
   'training.capture': 'Proben aufnehmen',
-  'training.captureHint': 'Starte eine Aufnahme, halte die Gebärde ruhig vor die Kamera und beende sie. Nimm eine zweite Aufnahme aus einem etwas anderen Winkel auf, damit die Auswertung aussagekräftig ist.',
+  'training.captureHint': 'Starte eine Aufnahme, führe die Gebärde einmal vor der Kamera aus und stoppe dann. Eine Aufnahme dauert mindestens eine Sekunde und erfasst Handform und Bewegung. Nimm eine zweite Aufnahme aus einem etwas anderen Winkel auf, damit die Auswertung aussagekräftig ist.',
   'training.samples': 'Proben',
   'training.noSamples': 'Noch keine Proben für dieses Etikett.',
   'training.clearSamples': 'Proben löschen',
@@ -767,4 +767,8 @@ export const de: Record<MessageKey, string> = {
   'calibration.settingsLink': 'Einstellungen.',
   'calibration.next': 'Weiter',
   'calibration.back': 'Zurück',
+  'reader.motionNote': 'Das trainierte Modell vergleicht ein etwa einsekündiges Fenster aus Handform und Bewegung, daher lässt sich auch ein Gebärdenzeichen erkennen, das sich durch den Raum bewegt. Es kennt nur die von dir aufgenommenen Etiketten.',
+  'training.takeTooShort': 'Diese Aufnahme war zu kurz. Halte oder führe die Gebärde beim Aufnehmen etwa eine Sekunde lang aus.',
+  'training.takeSaved': 'Aufnahme als {count} Proben gespeichert.',
+  'training.ignoredSamples': '{count} Proben nutzen das ältere Einzelbildformat und wurden für dieses Modell nicht verwendet.',
 }

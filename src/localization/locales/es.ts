@@ -695,7 +695,7 @@ export const es: Record<MessageKey, string> = {
   'training.descriptionPlaceholder': 'Nota opcional sobre este signo',
   'training.addLabel': 'Añadir etiqueta',
   'training.capture': 'Grabar muestras',
-  'training.captureHint': 'Inicia una toma, mantén el signo firme frente a la cámara y detenla. Graba una segunda toma desde un ángulo algo distinto para que la evaluación sea útil.',
+  'training.captureHint': 'Inicia una toma, realiza el signo una vez frente a la cámara y detente. Una toma dura al menos un segundo y registra la forma y el movimiento de la mano. Graba una segunda toma desde un ángulo algo distinto para que la evaluación sea significativa.',
   'training.samples': 'Muestras',
   'training.noSamples': 'Aún no hay muestras para esta etiqueta.',
   'training.clearSamples': 'Borrar muestras',
@@ -769,4 +769,8 @@ export const es: Record<MessageKey, string> = {
   'calibration.settingsLink': 'Ajustes.',
   'calibration.next': 'Siguiente',
   'calibration.back': 'Atrás',
+  'reader.motionNote': 'El modelo entrenado compara una ventana de un segundo de forma y movimiento de la mano, así que puede reconocer un signo que se desplaza por el espacio. Solo conoce las etiquetas que grabaste.',
+  'training.takeTooShort': 'Esa toma fue demasiado corta. Mantén o realiza el signo durante aproximadamente un segundo mientras grabas.',
+  'training.takeSaved': 'Toma guardada como {count} muestras.',
+  'training.ignoredSamples': '{count} muestras usan el formato antiguo de un solo fotograma y no se usaron para este modelo.',
 }

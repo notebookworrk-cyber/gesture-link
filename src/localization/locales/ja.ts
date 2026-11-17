@@ -685,7 +685,7 @@ export const ja: Record<MessageKey, string> = {
   'training.descriptionPlaceholder': 'この手話についての任意のメモ',
   'training.addLabel': 'ラベルを追加',
   'training.capture': 'サンプルを録画',
-  'training.captureHint': 'テイクを開始し、手話をカメラの前でしっかり保ってから停止します。評価を意味あるものにするため、少し違う角度から2回目のテイクも録画してください。',
+  'training.captureHint': 'テイクを開始し、カメラの前で手話を一度行ってから停止します。テイクは1秒以上で、手の形と動きの両方を記録します。評価を意味あるものにするため、少し違う角度でもう一度テイクを記録してください。',
   'training.samples': 'サンプル',
   'training.noSamples': 'このラベルのサンプルはまだありません。',
   'training.clearSamples': 'サンプルを削除',
@@ -759,4 +759,8 @@ export const ja: Record<MessageKey, string> = {
   'calibration.settingsLink': '設定。',
   'calibration.next': '次へ',
   'calibration.back': '戻る',
+  'reader.motionNote': '学習したモデルは手の形と動きの約1秒のウィンドウを比較するため、空間を移動する手話も認識できます。認識できるのは記録したラベルだけです。',
+  'training.takeTooShort': 'テイクが短すぎます。記録中は手話を1秒ほど続けてください。',
+  'training.takeSaved': 'テイクを {count} サンプルとして保存しました。',
+  'training.ignoredSamples': '{count} 件のサンプルは旧形式（単一フレーム）のため、このモデルには使われていません。',
 }

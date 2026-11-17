@@ -46,32 +46,64 @@ Verification: 41 new unit tests in six files (buffer, identity, normaliser,
 scheduler, calibration, diagnostics); full suite 167 tests in 22 files;
 typecheck, lint and production build clean.
 
-## Stage 2 — Motion-aware recognition (Pending)
+## Stage 2 — Motion-aware recognition (Built, unverified with a real hand)
 
 Goal: recognise a short window, not one frame, and refuse to guess.
 
-- Feature vector v2: canonical hand points, wrist trajectory over a 0.8–1.2 s
-  window, velocity and direction histograms, plus two-hand relative offsets
-  when both hands are tracked.
-- `SignSegmenter`: start/end a candidate sign from movement energy and hand
-  presence, so a moving sign is captured as one event instead of N frames.
-- `TemporalClassifier`: per-label prototype sequences (DTW or fixed-length
-  resampling) trained in Training Studio; report unknown when the distance
-  exceeds the calibrated threshold.
-- Reader rewrite: consume all tracked hands, emit one event per segmented sign,
-  never re-emit the same sign while it is held, and show "unknown" honestly.
-- Acceptance: unit tests for segmentation boundaries, two-hand offsets, unknown
-  rejection, and event de-duplication; real-hand check by the user.
+Shipped:
 
-## Stage 3 — Training pipeline for the new features (Pending)
+- Window feature layout in `features.ts`: 69 hand-shape values, a weighted
+  primary-hand position in shoulder space (×3), the second-hand offset and a
+  presence flag — 76 values per frame, resampled to 12 time-normalised frames =
+  912 values. `windowFromFrames` resamples by linear interpolation, so the same
+  gesture at two speeds is comparable; `windowDistance` is an RMS metric.
+- `SignWindowBuffer`: rolling 1.1 s of frames, emits at most one window per
+  350 ms, needs at least a 600 ms span and four frames, clears after two
+  consecutive frames without a hand, and ignores out-of-order timestamps.
+- `windowsFromTake` turns a recorded take into overlapping training windows with
+  the same length and stride; the end of the take is always scored and a short
+  take still yields one window.
+- Reader: a window model feeds the buffer and classifies the resampled window;
+  a frame model keeps the old one-reading path. Both go through one
+  `applyReading` commit path, so stabilisation, release and history behaviour are
+  identical. The mode note explains that the model compares one second of shape
+  and movement.
+- The window buffer resets on mode and model changes so a new layout never mixes
+  with old frames.
 
-- Store v2 samples with canonical landmarks and pose context; migrate v1 samples
-  without pretending they are equivalent (label them as static-only).
-- Take-grouped split retained; per-label threshold from the held-out distance
-  distribution, not a fixed constant.
-- Export format v2 with a `features` field and an import migration path.
-- Acceptance: held-out evaluation restated honestly, including the small-sample
-  caveat; no ISL accuracy claim.
+Deliberate deviations from the plan above:
+
+- There is no energy-based segmenter. A sliding window handles static signs
+  (which have no movement energy to segment on) and moving signs on one path.
+- Two-handed support is the second hand's offset and presence, not the second
+  hand's full landmark shape.
+- The unknown threshold stays a configurable constant; the per-label threshold
+  in Stage 3 was not built.
+
+Verification: 10 window-feature tests, 11 window-buffer/take tests and 11
+classifier-v2 tests; full suite 208 tests in 26 files; typecheck, lint and
+production build clean. No real hand has been in front of the camera, so
+recognition quality and the 1.1 s/350 ms timing are **not** verified.
+
+## Stage 3 — Training pipeline for the new features (Built, unverified)
+
+- The Training Studio records a take frame by frame (max 300 frames), then
+  converts it into window samples on stop and reports the saved count. A take
+  that produced no window is reported as too short instead of silently saving
+  nothing.
+- `selectSamples` chooses one feature layout for the whole model: window samples
+  win, and older single-frame samples are ignored and counted in
+  `model.ignoredSamples`; the inspector shows that count.
+- Model v2 stores `featureKind` and `featureLength`; `classify` refuses a vector
+  whose length differs from the model instead of comparing a prefix. Version-1
+  models still load and score as frame models.
+- The take-grouped split is retained, and the evaluator excludes
+  other-layout test samples and reports them through `ignoredTestCount` instead
+  of counting them as unknown.
+- Not done: sample migration (old frame samples stay in IndexedDB and are
+  ignored rather than converted); export/import format version bump and a
+  per-label threshold. Held-out evaluation is restated as measured, with the
+  small-sample caveat; no ISL accuracy claim.
 
 ## Stage 4 — Speaker and speech queue (Partially done)
 

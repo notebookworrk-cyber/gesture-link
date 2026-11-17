@@ -3,6 +3,12 @@ import type { Handedness } from '@/vision/types'
 /** The recognition categories the reader keeps strictly separate. */
 export type SignCategory = 'alphabet' | 'number' | 'vocabulary' | 'custom'
 
+/**
+ * `frame` models score one reading; `window` models score a time-normalised
+ * sequence that includes where the hand moved. The two are never mixed.
+ */
+export type SignFeatureKind = 'frame' | 'window'
+
 export interface SignLabel {
   id: string
   name: string
@@ -15,20 +21,31 @@ export interface SignLabel {
 export interface SignSample {
   id: string
   labelId: string
-  /** Flattened, normalised feature vector (see `features.ts`). */
+  /**
+   * Flattened feature vector. A `frame` sample is one reading (69 values); a
+   * `window` sample is a resampled sequence (see `features.ts`).
+   */
   features: number[]
   handedness: Handedness
   /**
    * Samples captured in one continuous take share a group id. The train/test
-   * split happens on groups, so neighbouring frames never leak across the
-   * split and the evaluation stays honest.
+   * split happens on groups, so neighbouring frames and overlapping windows
+   * never leak across the split and the evaluation stays honest.
    */
   group: string
   createdAt: number
+  /** Wall-clock length of the recording, for window samples. */
+  durationMs?: number
 }
 
 export interface SignModel {
   version: number
+  /** Which feature layout the prototypes use. Missing on version-1 models. */
+  featureKind?: SignFeatureKind
+  /** Vector length this model expects. Missing on version-1 models. */
+  featureLength?: number
+  /** Samples recorded with the other layout and therefore not used. */
+  ignoredSamples?: number
   labels: SignLabel[]
   /** Representative feature vectors per label id. */
   prototypes: Record<string, number[][]>
@@ -68,6 +85,8 @@ export interface Evaluation {
   testCount: number
   /** Samples used for training. */
   trainCount: number
+  /** Test samples recorded with the other feature layout and not scored. */
+  ignoredTestCount?: number
   /** Overall share of correct predictions, 0…1. */
   accuracy: number
   /** Share of predictions reported as unknown, 0…1. */

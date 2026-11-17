@@ -23,7 +23,8 @@ import { localeMeta, useI18n } from '@/localization/i18n'
 import type { MessageKey } from '@/localization/locales/en'
 import { useSettings } from '@/settings/settingsStore'
 import { classify } from '@/signs/classifier'
-import { featuresFromReading } from '@/signs/features'
+import { featuresFromReading, windowFrameFromReading } from '@/signs/features'
+import { SignWindowBuffer } from '@/signs/windowBuffer'
 import {
   appendWord,
   addSpace,
@@ -93,6 +94,7 @@ export function SignReaderPage() {
   autoAddRef.current = autoAdd
 
   const stabilizerRef = useRef(new SignStabilizer(STABLE_FRAMES))
+  const windowRef = useRef(new SignWindowBuffer())
   const committedRef = useRef('')
   const releasedRef = useRef(true)
 
@@ -141,6 +143,32 @@ export function SignReaderPage() {
     [],
   )
 
+  /**
+   * Shared commit path for both recognition kinds: stabilise, do not re-emit a
+   * sign while it is held, and only append once it has been released.
+   */
+  const applyReading = useCallback(
+    (result: ReaderReading, hasHand: boolean) => {
+      setReading(result)
+      if (!hasHand) {
+        releasedRef.current = true
+        stabilizerRef.current.reset()
+        return
+      }
+      if (result.unknown) {
+        stabilizerRef.current.reset()
+        return
+      }
+      const stable = stabilizerRef.current.push(result.key)
+      if (!stable) return
+      if (!releasedRef.current && result.key === committedRef.current) return
+      committedRef.current = result.key
+      releasedRef.current = false
+      commit(result)
+    },
+    [commit],
+  )
+
   // Recognition runs on the shared engine's frames.
   useEffect(
     () =>
@@ -148,40 +176,54 @@ export function SignReaderPage() {
         const hand = frame.hands[0] ?? null
         const currentMode = modeRef.current
         const currentModel = modelRef.current
+        const buffer = windowRef.current
+
+        // A window model scores a time-normalised sequence, so it needs the
+        // rolling buffer. A frame model scores the current reading directly.
+        if (currentMode === 'model' && currentModel?.featureKind === 'window') {
+          const vector = hand
+            ? windowFrameFromReading(hand, frame.hands[1] ?? null)
+            : null
+          const window = buffer.push(frame.timestamp, vector)
+          if (!window) {
+            // While a window fills, keep the previous reading instead of
+            // flickering between empty and recognised twice a second.
+            if (!hand) {
+              releasedRef.current = true
+              stabilizerRef.current.reset()
+              setReading({ key: 'none', text: '', confidence: 0, unknown: true })
+            }
+            return
+          }
+          const prediction = classify(currentModel, window)
+          applyReading(readFrame('model', hand, prediction), true)
+          return
+        }
+
+        buffer.reset()
         const modelResult =
           currentMode === 'model' && currentModel && hand
             ? classify(currentModel, featuresFromReading(hand))
             : null
-        const result = readFrame(currentMode, hand, modelResult)
-        setReading(result)
-
-        if (!hand) {
-          releasedRef.current = true
-          stabilizerRef.current.reset()
-          return
-        }
-        if (result.unknown) {
-          stabilizerRef.current.reset()
-          return
-        }
-
-        const stable = stabilizerRef.current.push(result.key)
-        if (!stable) return
-        if (!releasedRef.current && result.key === committedRef.current) return
-        committedRef.current = result.key
-        releasedRef.current = false
-        commit(result)
+        applyReading(readFrame(currentMode, hand, modelResult), Boolean(hand))
       }),
-    [engine, commit],
+    [applyReading, engine],
   )
 
   // Switching the mode starts a fresh stabiliser, so a reading from the old
   // mode can never leak into the new one.
   useEffect(() => {
     stabilizerRef.current.reset()
+    windowRef.current.reset()
     committedRef.current = ''
     releasedRef.current = true
   }, [mode])
+
+  // A newly trained model may use a different feature layout, so the window
+  // buffer must not carry frames recorded for the previous model.
+  useEffect(() => {
+    windowRef.current.reset()
+  }, [model])
 
   useEffect(() => {
     if (!notice) return
@@ -316,7 +358,13 @@ export function SignReaderPage() {
           <div className={styles.layout}>
             <section className={styles.previewColumn}>
               <CameraPreview />
-              <p className={styles.note}>{t(modeNoteKey(mode))}</p>
+              <p className={styles.note}>
+                {t(
+                  mode === 'model' && model?.featureKind === 'window'
+                    ? 'reader.motionNote'
+                    : modeNoteKey(mode),
+                )}
+              </p>
               <p className={styles.note}>{t('reader.stabilityHint')}</p>
             </section>
 

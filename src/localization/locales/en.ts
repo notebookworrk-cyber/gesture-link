@@ -691,7 +691,7 @@ export const en = {
   'training.descriptionPlaceholder': 'Optional note about this sign',
   'training.addLabel': 'Add label',
   'training.capture': 'Record samples',
-  'training.captureHint': 'Start a take, hold the sign steady in front of the camera, then stop. Record a second take from a slightly different angle so the evaluation is meaningful.',
+  'training.captureHint': 'Start a take, perform the sign once in front of the camera, then stop. A take lasts at least a second and records both hand shape and movement. Record a second take from a slightly different angle so the evaluation is meaningful.',
   'training.samples': 'Samples',
   'training.noSamples': 'No samples for this label yet.',
   'training.clearSamples': 'Delete samples',
@@ -765,6 +765,10 @@ export const en = {
   'calibration.settingsLink': 'Settings.',
   'calibration.next': 'Next',
   'calibration.back': 'Back',
+  'reader.motionNote': 'The trained model compares a one-second window of hand shape and movement, so a sign that travels through space can be recognised. It still only knows the labels you recorded.',
+  'training.takeTooShort': 'That take was too short. Hold or perform the sign for about a second while recording.',
+  'training.takeSaved': 'Take saved as {count} samples.',
+  'training.ignoredSamples': '{count} samples use the older single-frame format and were not used for this model.',
 } as const
 
 export type MessageKey = keyof typeof en

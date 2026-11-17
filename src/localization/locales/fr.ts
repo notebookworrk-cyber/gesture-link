@@ -704,7 +704,7 @@ export const fr: Record<MessageKey, string> = {
   'training.descriptionPlaceholder': 'Note facultative sur ce signe',
   'training.addLabel': 'Ajouter l’étiquette',
   'training.capture': 'Enregistrer des échantillons',
-  'training.captureHint': 'Lancez une prise, maintenez le signe stable devant la caméra, puis arrêtez. Enregistrez une seconde prise sous un angle légèrement différent pour que l’évaluation ait du sens.',
+  'training.captureHint': 'Démarrez une prise, effectuez le signe une fois devant la caméra, puis arrêtez. Une prise dure au moins une seconde et enregistre la forme et le mouvement de la main. Enregistrez une seconde prise sous un angle légèrement différent pour que l’évaluation ait du sens.',
   'training.samples': 'Échantillons',
   'training.noSamples': 'Aucun échantillon pour cette étiquette.',
   'training.clearSamples': 'Supprimer les échantillons',
@@ -778,4 +778,8 @@ export const fr: Record<MessageKey, string> = {
   'calibration.settingsLink': 'Réglages.',
   'calibration.next': 'Suivant',
   'calibration.back': 'Retour',
+  'reader.motionNote': 'Le modèle entraîné compare une fenêtre d’environ une seconde de forme et de mouvement de la main ; un signe qui se déplace dans l’espace peut donc être reconnu. Il ne connaît que les étiquettes que vous avez enregistrées.',
+  'training.takeTooShort': 'Cette prise est trop courte. Maintenez ou effectuez le signe pendant environ une seconde.',
+  'training.takeSaved': 'Prise enregistrée sous {count} échantillons.',
+  'training.ignoredSamples': '{count} échantillons utilisent l’ancien format à image unique et n’ont pas servi à ce modèle.',
 }

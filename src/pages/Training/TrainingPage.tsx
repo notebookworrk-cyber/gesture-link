@@ -13,7 +13,8 @@ import { Panel } from '@/components/ui/Panel'
 import { Workspace } from '@/components/layout/Workspace'
 import { CameraPreview } from '@/components/vision/CameraPreview'
 import { useI18n } from '@/localization/i18n'
-import { featuresFromReading, toArray } from '@/signs/features'
+import { toArray, windowFrameFromReading } from '@/signs/features'
+import { windowsFromTake } from '@/signs/windowBuffer'
 import { useSigns } from '@/signs/store'
 import type { SignCategory, SignLabel, SignSample } from '@/signs/types'
 import { getVisionEngine } from '@/vision/VisionEngine'
@@ -21,8 +22,8 @@ import { useVisionStatus } from '@/vision/visionStatus'
 import { TrainingInspector } from './TrainingInspector'
 import styles from './training.module.css'
 
-/** Samples are written to IndexedDB in small batches to keep the UI smooth. */
-const FLUSH_SIZE = 12
+/** Frames kept per take; about 10 s at 30 Hz, enough for one sign. */
+const MAX_TAKE_FRAMES = 300
 
 export function TrainingPage() {
   const { t, formatNumber, formatDate } = useI18n()
@@ -56,7 +57,9 @@ export function TrainingPage() {
   const [busy, setBusy] = useState(false)
 
   const takeRef = useRef<string | null>(null)
-  const bufferRef = useRef<SignSample[]>([])
+  const takeFramesRef = useRef<Array<{ timestamp: number; vector: Float32Array }>>([])
+  const takeStartedAtRef = useRef(0)
+  const takeHandednessRef = useRef<SignSample['handedness']>('Right')
   const selectedRef = useRef<string | null>(null)
   selectedRef.current = selectedLabelId
 
@@ -70,49 +73,64 @@ export function TrainingPage() {
     if (!labels.some((label) => label.id === selectedLabelId)) setSelectedLabelId(null)
   }, [labels, selectedLabelId])
 
-  const flush = useCallback(async () => {
-    const buffer = bufferRef.current
-    if (buffer.length === 0) return
-    bufferRef.current = []
-    await addSamples(buffer)
-  }, [addSamples])
-
-  // Capture: every frame with a hand becomes one sample of the current take.
+  // Capture: every frame with a hand is kept as part of the current take. The
+  // take becomes time-normalised windows when it stops, so speed and a short
+  // pause inside a sign do not create separate samples.
   useEffect(
     () =>
       engine.subscribeFrames((frame) => {
         if (!takeRef.current) return
         const hand = frame.hands[0]
         if (!hand) return
-        const labelId = selectedRef.current
-        if (!labelId) return
-        const sample: SignSample = {
-          id: `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-          labelId,
-          features: toArray(featuresFromReading(hand)),
-          handedness: hand.handedness,
-          group: takeRef.current,
-          createdAt: Date.now(),
-        }
-        bufferRef.current.push(sample)
-        setTakeCount((current) => current + 1)
-        if (bufferRef.current.length >= FLUSH_SIZE) void flush()
+        if (takeFramesRef.current.length >= MAX_TAKE_FRAMES) return
+        takeHandednessRef.current = hand.handedness
+        takeFramesRef.current.push({
+          timestamp: frame.timestamp,
+          vector: windowFrameFromReading(hand, frame.hands[1] ?? null),
+        })
+        setTakeCount(takeFramesRef.current.length)
       }),
-    [engine, flush],
+    [engine],
   )
 
   const startTake = useCallback(() => {
     if (!selectedLabelId) return
     takeRef.current = `g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
+    takeFramesRef.current = []
+    takeStartedAtRef.current = Date.now()
     setTakeCount(0)
     setCapturing(true)
   }, [selectedLabelId])
 
   const stopTake = useCallback(async () => {
+    const labelId = selectedRef.current
+    const group = takeRef.current
+    const frames = takeFramesRef.current
     takeRef.current = null
+    takeFramesRef.current = []
     setCapturing(false)
-    await flush()
-  }, [flush])
+    if (!labelId || !group) return
+
+    const windows = windowsFromTake(frames)
+    if (windows.length === 0) {
+      setNotice(t('training.takeTooShort'))
+      return
+    }
+
+    const createdAt = Date.now()
+    const durationMs = createdAt - takeStartedAtRef.current
+    const samples: SignSample[] = windows.map((window, index) => ({
+      id: `s_${createdAt.toString(36)}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+      labelId,
+      features: toArray(window),
+      handedness: takeHandednessRef.current,
+      group,
+      createdAt: createdAt + index,
+      durationMs,
+    }))
+    await addSamples(samples)
+    setNotice(t('training.takeSaved', { count: formatNumber(samples.length) }))
+  }, [addSamples, formatNumber, t])
 
   useEffect(() => {
     if (!notice) return

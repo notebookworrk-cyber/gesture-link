@@ -1,15 +1,16 @@
-import { distance } from './features'
+import { distance, windowDistance, WINDOW_LENGTH } from './features'
 import type {
   ClassScore,
   Evaluation,
   Prediction,
+  SignFeatureKind,
   SignLabel,
   SignModel,
   SignSample,
 } from './types'
 
 /** Model format version, bumped when the feature layout changes. */
-export const MODEL_VERSION = 1
+export const MODEL_VERSION = 2
 
 export interface TrainOptions {
   /** Representative vectors kept per label. */
@@ -21,11 +22,43 @@ export interface TrainOptions {
 }
 
 /**
+ * Chooses one feature kind for the whole model. Window samples are preferred:
+ * when any exist, older single-frame samples are ignored rather than mixed into
+ * a distance metric that averages over different vector lengths.
+ */
+export function selectSamples(samples: SignSample[]): {
+  kind: SignFeatureKind
+  length: number
+  selected: SignSample[]
+  ignored: SignSample[]
+} {
+  const windowed = samples.filter((sample) => sample.features.length === WINDOW_LENGTH)
+  if (windowed.length > 0) {
+    return {
+      kind: 'window',
+      length: WINDOW_LENGTH,
+      selected: windowed,
+      ignored: samples.filter((sample) => sample.features.length !== WINDOW_LENGTH),
+    }
+  }
+  const length = samples[0]?.features.length ?? 0
+  return { kind: 'frame', length, selected: samples, ignored: [] }
+}
+
+function metricFor(kind: SignFeatureKind): (a: ArrayLike<number>, b: ArrayLike<number>) => number {
+  return kind === 'window' ? windowDistance : distance
+}
+
+/**
  * Builds the representative vectors of one label with a greedy farthest-point
  * seeding followed by averaging. It keeps the natural variation of a sign
- * (different angles and distances) without storing every frame in the model.
+ * (different angles and distances) without storing every sample in the model.
  */
-export function buildPrototypes(vectors: number[][], count: number): number[][] {
+export function buildPrototypes(
+  vectors: number[][],
+  count: number,
+  metric: (a: ArrayLike<number>, b: ArrayLike<number>) => number = distance,
+): number[][] {
   if (vectors.length === 0) return []
   if (vectors.length <= count) return vectors.map((vector) => [...vector])
 
@@ -36,7 +69,7 @@ export function buildPrototypes(vectors: number[][], count: number): number[][] 
     for (const vector of vectors) {
       let closest = Infinity
       for (const seed of seeds) {
-        const value = distance(seed, vector)
+        const value = metric(seed, vector)
         if (value < closest) closest = value
       }
       if (closest > bestDistance) {
@@ -52,7 +85,7 @@ export function buildPrototypes(vectors: number[][], count: number): number[][] 
     let closest = 0
     let closestDistance = Infinity
     for (let index = 0; index < seeds.length; index += 1) {
-      const value = distance(seeds[index]!, vector)
+      const value = metric(seeds[index]!, vector)
       if (value < closestDistance) {
         closestDistance = value
         closest = index
@@ -80,22 +113,27 @@ export function trainModel(
   samples: SignSample[],
   options: TrainOptions,
 ): SignModel {
+  const chosen = selectSamples(samples)
+  const metric = metricFor(chosen.kind)
   const prototypes: Record<string, number[][]> = {}
   for (const label of labels) {
-    const vectors = samples
+    const vectors = chosen.selected
       .filter((sample) => sample.labelId === label.id)
       .map((sample) => sample.features)
     if (vectors.length === 0) continue
-    prototypes[label.id] = buildPrototypes(vectors, options.prototypesPerLabel)
+    prototypes[label.id] = buildPrototypes(vectors, options.prototypesPerLabel, metric)
   }
   return {
     version: MODEL_VERSION,
+    featureKind: chosen.kind,
+    featureLength: chosen.length,
+    ignoredSamples: chosen.ignored.length,
     labels: labels.filter((label) => (prototypes[label.id]?.length ?? 0) > 0),
     prototypes,
     prototypesPerLabel: options.prototypesPerLabel,
     unknownThreshold: options.unknownThreshold,
     trainedAt: Date.now(),
-    sampleCount: samples.length,
+    sampleCount: chosen.selected.length,
   }
 }
 
@@ -105,6 +143,20 @@ export function trainModel(
  * other label; a large absolute distance means the sign is not in the model.
  */
 export function classify(model: SignModel, features: ArrayLike<number>): Prediction {
+  const unknownResult: Prediction = {
+    labelId: '',
+    name: '',
+    category: 'custom',
+    confidence: 0,
+    unknown: true,
+  }
+  // A model trained on one feature layout must not score a vector from another:
+  // the distance would silently compare only a prefix.
+  if (model.featureLength !== undefined && features.length !== model.featureLength) {
+    return unknownResult
+  }
+  const metric = metricFor(model.featureKind ?? 'frame')
+
   let bestLabelId = ''
   let bestName = ''
   let bestCategory: Prediction['category'] = 'custom'
@@ -115,7 +167,7 @@ export function classify(model: SignModel, features: ArrayLike<number>): Predict
     const prototypes = model.prototypes[label.id] ?? []
     let closest = Infinity
     for (const prototype of prototypes) {
-      const value = distance(prototype, features)
+      const value = metric(prototype, features)
       if (value < closest) closest = value
     }
     if (!Number.isFinite(closest)) continue
@@ -130,15 +182,7 @@ export function classify(model: SignModel, features: ArrayLike<number>): Predict
     }
   }
 
-  if (!bestLabelId) {
-    return {
-      labelId: '',
-      name: '',
-      category: 'custom',
-      confidence: 0,
-      unknown: true,
-    }
-  }
+  if (!bestLabelId) return unknownResult
 
   const unknown = bestDistance > model.unknownThreshold
   const margin = Number.isFinite(secondDistance)
@@ -192,6 +236,10 @@ export function evaluateModel(
   options: TrainOptions,
 ): Evaluation {
   const model = trainModel(labels, train, options)
+  // Samples recorded with the other feature layout cannot be scored by this
+  // model, so they are excluded and reported instead of counted as unknown.
+  const scoredTest = test.filter((sample) => sample.features.length === model.featureLength)
+  const ignoredTestCount = test.length - scoredTest.length
   const perClass = new Map<string, ClassScore>()
   for (const label of labels) {
     perClass.set(label.id, {
@@ -209,7 +257,7 @@ export function evaluateModel(
   let correct = 0
   let unknown = 0
 
-  for (const sample of test) {
+  for (const sample of scoredTest) {
     const actual = perClass.get(sample.labelId)
     if (actual) actual.total += 1
     const prediction = classify(model, sample.features)
@@ -227,7 +275,7 @@ export function evaluateModel(
     confusion.push([prediction.labelId, sample.labelId])
   }
 
-  const testCount = test.length
+  const testCount = scoredTest.length
   const scored = [...perClass.values()]
     .filter((entry) => entry.total > 0 || entry.predicted > 0)
     .map((entry) => {
@@ -238,7 +286,8 @@ export function evaluateModel(
 
   return {
     testCount,
-    trainCount: train.length,
+    trainCount: model.sampleCount,
+    ignoredTestCount,
     accuracy: testCount > 0 ? correct / testCount : 0,
     unknownRate: testCount > 0 ? unknown / testCount : 0,
     perClass: scored,

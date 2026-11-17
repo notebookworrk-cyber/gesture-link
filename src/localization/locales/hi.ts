@@ -687,7 +687,7 @@ export const hi: Record<MessageKey, string> = {
   'training.descriptionPlaceholder': 'इस संकेत के बारे में वैकल्पिक टिप्पणी',
   'training.addLabel': 'लेबल जोड़ें',
   'training.capture': 'नमूने रिकॉर्ड करें',
-  'training.captureHint': 'एक टेक शुरू करें, संकेत को कैमरे के सामने स्थिर रखें, फिर रोकें। मूल्यांकन अर्थपूर्ण रहे, इसके लिए थोड़े अलग कोण से दूसरी टेक रिकॉर्ड करें।',
+  'training.captureHint': 'टेक शुरू करें, कैमरे के सामने संकेत एक बार करें, फिर रोकें। टेक कम से कम एक सेकंड का होता है और हाथ की आकृति व गति दोनों दर्ज करता है। मूल्यांकन सार्थक रहे, इसके लिए थोड़े अलग कोण से दूसरा टेक रिकॉर्ड करें।',
   'training.samples': 'नमूने',
   'training.noSamples': 'इस लेबल के लिए अभी कोई नमूना नहीं।',
   'training.clearSamples': 'नमूने हटाएँ',
@@ -761,4 +761,8 @@ export const hi: Record<MessageKey, string> = {
   'calibration.settingsLink': 'सेटिंग्स।',
   'calibration.next': 'आगे',
   'calibration.back': 'पीछे',
+  'reader.motionNote': 'प्रशिक्षित मॉडल हाथ की आकृति और गति की लगभग एक सेकंड की विंडो की तुलना करता है, इसलिए हवा में चलकर बनने वाला संकेत भी पहचाना जा सकता है। यह केवल आपके दर्ज किए लेबल जानता है।',
+  'training.takeTooShort': 'यह टेक बहुत छोटा था। रिकॉर्ड करते समय संकेत को लगभग एक सेकंड तक दोहराएँ।',
+  'training.takeSaved': 'टेक {count} नमूनों के रूप में सहेजा गया।',
+  'training.ignoredSamples': '{count} नमूने पुराने सिंगल-फ्रेम प्रारूप के हैं और इस मॉडल के लिए उपयोग नहीं हुए।',
 }
