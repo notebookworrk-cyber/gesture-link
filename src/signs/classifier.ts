@@ -1,4 +1,5 @@
 import { distance, windowDistance, WINDOW_LENGTH } from './features'
+import { TWO_HAND_LENGTH } from '@/recognition/TemporalFeatureExtractor'
 import type {
   ClassScore,
   Evaluation,
@@ -10,7 +11,7 @@ import type {
 } from './types'
 
 /** Model format version, bumped when the feature layout changes. */
-export const MODEL_VERSION = 2
+export const MODEL_VERSION = 3
 
 export interface TrainOptions {
   /** Representative vectors kept per label. */
@@ -32,6 +33,15 @@ export function selectSamples(samples: SignSample[]): {
   selected: SignSample[]
   ignored: SignSample[]
 } {
+  const twoHanded = samples.filter((sample) => sample.features.length === TWO_HAND_LENGTH)
+  if (twoHanded.length > 0) {
+    return {
+      kind: 'two-hand',
+      length: TWO_HAND_LENGTH,
+      selected: twoHanded,
+      ignored: samples.filter((sample) => sample.features.length !== TWO_HAND_LENGTH),
+    }
+  }
   const windowed = samples.filter((sample) => sample.features.length === WINDOW_LENGTH)
   if (windowed.length > 0) {
     return {
@@ -46,7 +56,7 @@ export function selectSamples(samples: SignSample[]): {
 }
 
 function metricFor(kind: SignFeatureKind): (a: ArrayLike<number>, b: ArrayLike<number>) => number {
-  return kind === 'window' ? windowDistance : distance
+  return kind === 'frame' ? distance : windowDistance
 }
 
 /**

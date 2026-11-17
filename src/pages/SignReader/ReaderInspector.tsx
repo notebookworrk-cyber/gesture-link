@@ -168,5 +168,9 @@ function modeKey(mode: ReaderMode): MessageKey {
       return 'reader.modeShape'
     case 'model':
       return 'reader.modeModel'
+    case 'number':
+      return 'reader.modeNumber'
+    case 'two-hand':
+      return 'reader.modeTwoHand'
   }
 }

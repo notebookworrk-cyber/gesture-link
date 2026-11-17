@@ -2,7 +2,7 @@ import type { StaticGestureId } from '@/vision/types'
 import type { HandReading } from '@/vision/types'
 
 /** The reader keeps the recognition categories strictly separate. */
-export type ReaderMode = 'count' | 'shape' | 'model'
+export type ReaderMode = 'count' | 'shape' | 'model' | 'number' | 'two-hand'
 
 export interface ReaderReading {
   /** Stable identity of the reading, used by the temporal stabiliser. */

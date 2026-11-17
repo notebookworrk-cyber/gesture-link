@@ -12,7 +12,7 @@ import {
   Volume2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Segmented, Toggle } from '@/components/ui/Controls'
+import { Segmented, SelectControl, Toggle } from '@/components/ui/Controls'
 import { Workspace } from '@/components/layout/Workspace'
 import { CameraPreview } from '@/components/vision/CameraPreview'
 import { CaptionView } from '@/captions/CaptionView'
@@ -23,9 +23,13 @@ import { localeMeta, useI18n } from '@/localization/i18n'
 import type { MessageKey } from '@/localization/locales/en'
 import { palmMotion, palmPoints, recognitionSettingsFrom, trackerOptionsFrom } from '@/recognition/config'
 import { SignEventManager } from '@/recognition/SignEventManager'
+import { composeNumbers, type Composition } from '@/recognition/NumberComposer'
+import { NumberRecognizer, type TwoHandNumbers } from '@/recognition/NumberRecognizer'
+import { classifyTwoHand } from '@/recognition/TwoHandSignClassifier'
+import { twoHandFrameFromUpdate } from '@/recognition/TemporalFeatureExtractor'
 import { TwoHandTracker } from '@/recognition/TwoHandTracker'
 import type { RecognitionCandidate, RecognitionEvent, RecognitionPhase } from '@/recognition/types'
-import { useSettings } from '@/settings/settingsStore'
+import { useSettings, type NumberOperation } from '@/settings/settingsStore'
 import { classify } from '@/signs/classifier'
 import { featuresFromReading, windowFrameFromReading } from '@/signs/features'
 import { SignWindowBuffer } from '@/signs/windowBuffer'
@@ -84,6 +88,12 @@ export function SignReaderPage() {
   const [phase, setPhase] = useState<RecognitionPhase>('idle')
   const [stabilization, setStabilization] = useState(0)
   const [lastEvent, setLastEvent] = useState('')
+  const [numbers, setNumbers] = useState<TwoHandNumbers>(() => ({
+    left: { slot: 'left', value: null, confidence: 0, known: false },
+    right: { slot: 'right', value: null, confidence: 0, known: false },
+    bothKnown: false,
+  }))
+  const [composition, setComposition] = useState<Composition | null>(null)
   const announceAlternateRef = useRef(false)
 
   const modeRef = useRef(mode)
@@ -103,6 +113,10 @@ export function SignReaderPage() {
   }
   const palmRef = useRef<ReturnType<typeof palmPoints>>({})
   const windowRef = useRef(new SignWindowBuffer())
+  const twoHandBufferRef = useRef(new SignWindowBuffer())
+  const numbersRef = useRef(new NumberRecognizer())
+  const operationRef = useRef<NumberOperation>(recognition.numberOperation)
+  operationRef.current = recognition.numberOperation
 
   const captionEngineRef = useRef<CaptionEngine | null>(null)
   if (!captionEngineRef.current) captionEngineRef.current = new CaptionEngine(captions)
@@ -180,10 +194,64 @@ export function SignReaderPage() {
         const currentModel = modelRef.current
         const buffer = windowRef.current
         let readingResult: ReaderReading
+        let candidate: RecognitionCandidate | null = null
 
-        // A window model scores a time-normalised sequence, so it needs the
-        // rolling buffer. A frame model scores the current reading directly.
-        if (currentMode === 'model' && currentModel?.featureKind === 'window') {
+        if (currentMode === 'number') {
+          const numberState = numbersRef.current.update(update, frame.timestamp)
+          const composed = composeNumbers(numberState, operationRef.current)
+          setNumbers(numberState)
+          setComposition(composed)
+          readingResult = composed.incomplete
+            ? { key: 'none', text: '', confidence: 0, unknown: true }
+            : {
+                key: `number:${operationRef.current}:${composed.text}`,
+                text: composed.text,
+                confidence: 0.9,
+                unknown: false,
+              }
+          candidate = readingResult.unknown
+            ? null
+            : {
+                key: readingResult.key,
+                text: readingResult.text,
+                confidence: readingResult.confidence,
+                source: 'number',
+                hands: ['left', 'right'],
+              }
+          setReading(readingResult)
+        } else if (currentMode === 'two-hand') {
+          const vector = twoHandFrameFromUpdate(update)
+          const window = twoHandBufferRef.current.push(frame.timestamp, vector)
+          if (!window) {
+            readingResult = { key: 'none', text: '', confidence: 0, unknown: true }
+            setReading(readingResult)
+            setPhase('idle')
+            return
+          }
+          const prediction =
+            currentModel?.featureKind === 'two-hand'
+              ? classifyTwoHand(currentModel, window)
+              : null
+          readingResult =
+            !prediction || prediction.unknown
+              ? { key: 'none', text: '', confidence: 0, unknown: true }
+              : {
+                  key: `two-hand:${prediction.labelId}`,
+                  text: prediction.name,
+                  confidence: prediction.confidence,
+                  unknown: false,
+                }
+          setReading(readingResult)
+          candidate = readingResult.unknown
+            ? null
+            : {
+                key: readingResult.key,
+                text: readingResult.text,
+                confidence: readingResult.confidence,
+                source: 'two-hand',
+                hands: ['left', 'right'],
+              }
+        } else if (currentMode === 'model' && currentModel?.featureKind === 'window') {
           const vector = hand
             ? windowFrameFromReading(hand, frame.hands[1] ?? null)
             : null
@@ -205,16 +273,18 @@ export function SignReaderPage() {
           readingResult = readFrame(currentMode, hand, modelResult)
         }
 
+        if (!candidate) {
+          candidate = readingResult.unknown
+            ? null
+            : {
+                key: readingResult.key,
+                text: readingResult.text,
+                confidence: readingResult.confidence,
+                source: currentMode === 'model' ? 'model' : currentMode,
+                hands: update.visible,
+              }
+        }
         setReading(readingResult)
-        const candidate: RecognitionCandidate | null = readingResult.unknown
-          ? null
-          : {
-              key: readingResult.key,
-              text: readingResult.text,
-              confidence: readingResult.confidence,
-              source: currentMode === 'model' ? 'model' : currentMode,
-              hands: update.visible,
-            }
         manager.update(candidate, motion, frame.timestamp, {
           lost: update.lost,
           latencyMs: frame.inferenceMs,
@@ -231,7 +301,9 @@ export function SignReaderPage() {
   useEffect(() => {
     eventsRef.current?.reset()
     trackerRef.current?.reset()
+    numbersRef.current.reset()
     windowRef.current.reset()
+    twoHandBufferRef.current.reset()
     palmRef.current = {}
     setPhase('idle')
   }, [mode])
@@ -240,6 +312,7 @@ export function SignReaderPage() {
   // buffer must not carry frames recorded for the previous model.
   useEffect(() => {
     windowRef.current.reset()
+    twoHandBufferRef.current.reset()
     eventsRef.current?.reset()
   }, [model])
 
@@ -345,7 +418,23 @@ export function SignReaderPage() {
     { value: 'count' as const, label: t('reader.modeCount') },
     { value: 'shape' as const, label: t('reader.modeShape') },
     { value: 'model' as const, label: t('reader.modeModel') },
+    { value: 'number' as const, label: t('reader.modeNumber') },
+    { value: 'two-hand' as const, label: t('reader.modeTwoHand') },
   ]
+
+  const confirmNumber = useCallback(() => {
+    if (!composition || composition.incomplete || composition.result === null) return
+    eventsRef.current?.commitManual(
+      {
+        key: `number:${operationRef.current}:${composition.text}`,
+        text: composition.text,
+        confidence: 0.9,
+        source: 'number',
+        hands: ['left', 'right'],
+      },
+      Date.now(),
+    )
+  }, [composition])
 
   const inspector = (
     <ReaderInspector
@@ -411,6 +500,9 @@ export function SignReaderPage() {
                 )}
               </p>
               <p className={styles.note}>{t('reader.stabilityHint')}</p>
+              {mode === 'two-hand' && model?.featureKind !== 'two-hand' ? (
+                <p className={styles.note}>{t('reader.twoHandMissingModel')}</p>
+              ) : null}
             </section>
 
             <div className={styles.mainColumn}>
@@ -468,6 +560,61 @@ export function SignReaderPage() {
                   ) : null}
                 </div>
               </section>
+
+              {mode === 'number' ? (
+                <section className={styles.card} aria-label={t('reader.numberPanel')}>
+                  <div className={styles.cardHead}>
+                    <h2>{t('reader.numberPanel')}</h2>
+                    <span className={styles.charCount}>
+                      {numbers.bothKnown ? t('reader.numberReady') : t('reader.incomplete')}
+                    </span>
+                  </div>
+                  <dl className={styles.detailList}>
+                    <div>
+                      <dt>{t('reader.leftHand')}</dt>
+                      <dd className="mono">{numbers.left.known ? numbers.left.value : '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('reader.rightHand')}</dt>
+                      <dd className="mono">{numbers.right.known ? numbers.right.value : '—'}</dd>
+                    </div>
+                    <div>
+                      <dt>{t('reader.operation')}</dt>
+                      <dd>
+                        <SelectControl
+                          ariaLabel={t('reader.operation')}
+                          value={recognition.numberOperation}
+                          onChange={(value) =>
+                            useSettings.getState().setRecognition({
+                              numberOperation: value as NumberOperation,
+                            })
+                          }
+                          options={[
+                            { value: 'independent', label: t('reader.opIndependent') },
+                            { value: 'addition', label: t('reader.opAddition') },
+                            { value: 'subtraction', label: t('reader.opSubtraction') },
+                            { value: 'concatenation', label: t('reader.opConcatenation') },
+                          ]}
+                        />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{t('reader.result')}</dt>
+                      <dd className="mono">{composition?.text ?? '—'}</dd>
+                    </div>
+                  </dl>
+                  <div className={styles.cardActions}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!composition || composition.incomplete || composition.result === null}
+                      onClick={confirmNumber}
+                    >
+                      {t('reader.confirmNumber')}
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
 
               <CaptionView
                 lines={captionLines}
@@ -616,6 +763,10 @@ function modeNoteKey(mode: ReaderMode): MessageKey {
       return 'reader.controlNote'
     case 'model':
       return 'reader.modelNote'
+    case 'number':
+      return 'reader.numberNote'
+    case 'two-hand':
+      return 'reader.twoHandNote'
   }
 }
 

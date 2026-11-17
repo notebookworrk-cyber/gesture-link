@@ -7,7 +7,8 @@ export type SignCategory = 'alphabet' | 'number' | 'vocabulary' | 'custom'
  * `frame` models score one reading; `window` models score a time-normalised
  * sequence that includes where the hand moved. The two are never mixed.
  */
-export type SignFeatureKind = 'frame' | 'window'
+/** `frame` scores one reading; `window` and `two-hand` score time-normalised sequences. */
+export type SignFeatureKind = 'frame' | 'window' | 'two-hand'
 
 export interface SignLabel {
   id: string
@@ -22,8 +23,9 @@ export interface SignSample {
   id: string
   labelId: string
   /**
-   * Flattened feature vector. A `frame` sample is one reading (69 values); a
-   * `window` sample is a resampled sequence (see `features.ts`).
+   * Flattened feature vector. A `frame` sample is one reading (69 values), a
+   * `window` sample is a resampled single-hand sequence and a `two-hand`
+   * sample is a resampled combined observation (see the recognition modules).
    */
   features: number[]
   handedness: Handedness

@@ -146,6 +146,16 @@ export class SignSegmenter {
     this.phase = 'waiting_for_release'
   }
 
+  /** Explicit user confirmation still goes through duplicate suppression. */
+  canCommitNow(key: string, now: number): boolean {
+    return this.suppressor.canCommit({
+      key,
+      now,
+      transitioned: false,
+      neutral: false,
+    })
+  }
+
   reset(): void {
     this.phase = 'idle'
     this.segmentKey = ''

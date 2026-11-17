@@ -8,14 +8,18 @@ import {
   Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { SelectControl } from '@/components/ui/Controls'
+import { SelectControl, Toggle } from '@/components/ui/Controls'
 import { Panel } from '@/components/ui/Panel'
 import { Workspace } from '@/components/layout/Workspace'
 import { CameraPreview } from '@/components/vision/CameraPreview'
 import { useI18n } from '@/localization/i18n'
 import { toArray, windowFrameFromReading } from '@/signs/features'
+import { twoHandFrameFromUpdate } from '@/recognition/TemporalFeatureExtractor'
+import { trackerOptionsFrom } from '@/recognition/config'
+import { TwoHandTracker } from '@/recognition/TwoHandTracker'
 import { windowsFromTake } from '@/signs/windowBuffer'
 import { useSigns } from '@/signs/store'
+import { useSettings } from '@/settings/settingsStore'
 import type { SignCategory, SignLabel, SignSample } from '@/signs/types'
 import { getVisionEngine } from '@/vision/VisionEngine'
 import { useVisionStatus } from '@/vision/visionStatus'
@@ -58,6 +62,9 @@ export function TrainingPage() {
 
   const takeRef = useRef<string | null>(null)
   const takeFramesRef = useRef<Array<{ timestamp: number; vector: Float32Array }>>([])
+  const twoHandTrackerRef = useRef<TwoHandTracker | null>(null)
+  const recognition = useSettings((state) => state.recognition)
+  const mirror = useSettings((state) => state.camera.mirror)
   const takeStartedAtRef = useRef(0)
   const takeHandednessRef = useRef<SignSample['handedness']>('Right')
   const selectedRef = useRef<string | null>(null)
@@ -80,9 +87,22 @@ export function TrainingPage() {
     () =>
       engine.subscribeFrames((frame) => {
         if (!takeRef.current) return
+        if (takeFramesRef.current.length >= MAX_TAKE_FRAMES) return
+        if (recognition.twoHandMode) {
+          if (!twoHandTrackerRef.current) {
+            twoHandTrackerRef.current = new TwoHandTracker(
+              trackerOptionsFrom(recognition, mirror),
+            )
+          }
+          const update = twoHandTrackerRef.current.update(frame)
+          const vector = twoHandFrameFromUpdate(update)
+          if (!vector) return
+          takeFramesRef.current.push({ timestamp: frame.timestamp, vector })
+          setTakeCount(takeFramesRef.current.length)
+          return
+        }
         const hand = frame.hands[0]
         if (!hand) return
-        if (takeFramesRef.current.length >= MAX_TAKE_FRAMES) return
         takeHandednessRef.current = hand.handedness
         takeFramesRef.current.push({
           timestamp: frame.timestamp,
@@ -90,13 +110,14 @@ export function TrainingPage() {
         })
         setTakeCount(takeFramesRef.current.length)
       }),
-    [engine],
+    [engine, mirror, recognition],
   )
 
   const startTake = useCallback(() => {
     if (!selectedLabelId) return
     takeRef.current = `g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
     takeFramesRef.current = []
+    twoHandTrackerRef.current?.reset()
     takeStartedAtRef.current = Date.now()
     setTakeCount(0)
     setCapturing(true)
@@ -264,6 +285,11 @@ export function TrainingPage() {
             <p>{t('page.training.lead')}</p>
           </div>
           <div className={styles.headerActions}>
+            <Toggle
+              checked={recognition.twoHandMode}
+              onChange={(twoHandMode) => useSettings.getState().setRecognition({ twoHandMode })}
+              label={t('training.twoHandCapture')}
+            />
             <Button
               variant="primary"
               icon={<Play aria-hidden="true" />}

@@ -42,7 +42,7 @@ describe('window model training', () => {
 
   it('detects the window layout and records its length', () => {
     const model = trainModel(labels, samples, options)
-    expect(model.version).toBe(2)
+    expect(model.version).toBe(3)
     expect(model.featureKind).toBe('window')
     expect(model.featureLength).toBe(WINDOW_LENGTH)
     expect(model.sampleCount).toBe(4)

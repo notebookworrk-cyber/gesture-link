@@ -34,6 +34,15 @@ export class SignEventManager {
     return () => this.listeners.delete(listener)
   }
 
+  /** Commits an explicitly confirmed reading through the same duplicate guard. */
+  commitManual(candidate: RecognitionCandidate, now: number): RecognitionEvent | null {
+    if (!candidate.key || candidate.confidence <= 0) return null
+    if (!this.segmenter.canCommitNow(candidate.key, now)) return null
+    const event = this.createEvent(candidate, now, now)
+    this.segmenter.consume(event.key, event.id, now)
+    return event
+  }
+
   /** Reconfigures the pipeline without replacing the subscribed instance. */
   configure(settings: RecognitionSettings): void {
     this.settings = settings
@@ -52,22 +61,30 @@ export class SignEventManager {
     this.lastLatencyMs = context.latencyMs ?? 0
     const update = this.segmenter.update(candidate, motion, now)
     if (!update.ready || !update.candidate) return null
+    const event = this.createEvent(update.candidate, update.startedAt, now)
+    this.segmenter.consume(event.key, event.id, now)
+    return event
+  }
 
+  private createEvent(
+    candidate: RecognitionCandidate,
+    startedAt: number,
+    now: number,
+  ): RecognitionEvent {
     const id = `evt_${now.toString(36)}_${(this.counter += 1).toString(36)}_${Math.random()
       .toString(36)
       .slice(2, 7)}`
     const event: RecognitionEvent = {
       id,
-      key: update.candidate.key,
-      text: update.candidate.text,
-      confidence: update.candidate.confidence,
-      source: update.candidate.source,
-      hands: update.candidate.hands,
-      startedAt: update.startedAt,
+      key: candidate.key,
+      text: candidate.text,
+      confidence: candidate.confidence,
+      source: candidate.source,
+      hands: candidate.hands,
+      startedAt,
       committedAt: now,
-      durationMs: now - update.startedAt,
+      durationMs: now - startedAt,
     }
-    this.segmenter.consume(event.key, event.id, now)
     this.eventCount += 1
     for (const listener of this.listeners) listener(event)
     return event
