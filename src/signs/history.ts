@@ -1,4 +1,4 @@
-import type { ReaderMode } from './reader'
+import type { PredictionSource } from '@/recognition/types'
 
 /** One committed reading in the reader's in-memory history. */
 export interface HistoryEntry {
@@ -6,7 +6,7 @@ export interface HistoryEntry {
   text: string
   labelId: string
   confidence: number
-  mode: ReaderMode
+  mode: PredictionSource
   at: number
 }
 

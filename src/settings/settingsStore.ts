@@ -13,6 +13,9 @@ export type Handedness = 'left' | 'right' | 'any'
 export type TrackingPreset = 'stable' | 'balanced' | 'responsive'
 export type ProcessingQuality = 'low' | 'balanced' | 'high'
 export type DelegatePreference = 'auto' | 'gpu' | 'cpu'
+export type RecognitionPreset = 'beginner' | 'balanced' | 'responsive'
+export type NumberOperation = 'independent' | 'addition' | 'subtraction' | 'concatenation'
+export type SpeechMode = 'manual' | 'word' | 'sentence' | 'auto'
 
 export interface AppearanceSettings {
   theme: ThemeMode
@@ -72,6 +75,35 @@ export interface PerformanceSettings {
   lowPower: boolean
 }
 
+/** Advanced recognition controls consumed by the recognition event pipeline. */
+export interface RecognitionSettingsState {
+  preset: RecognitionPreset
+  minConfidence: number
+  stabilityMs: number
+  minDurationMs: number
+  maxDurationMs: number
+  releaseMs: number
+  transitionMs: number
+  jitterDistance: number
+  handLossMs: number
+  duplicateSuppression: boolean
+  twoHandMode: boolean
+  numberOperation: NumberOperation
+  motionSmoothing: number
+  windowMs: number
+}
+
+/** Speech output controls; only committed recognition events can be spoken. */
+export interface SpeechSettingsState {
+  mode: SpeechMode
+  preview: boolean
+  autoEnabled: boolean
+  gapMs: number
+  rate: number
+  pitch: number
+  volume: number
+}
+
 export interface AccessibilitySettings {
   captionsVisible: boolean
   captionSize: 'sm' | 'md' | 'lg'
@@ -105,6 +137,8 @@ export interface SettingsState {
   accessibility: AccessibilitySettings
   captions: CaptionSettings
   gestures: GestureSettings
+  recognition: RecognitionSettingsState
+  speech: SpeechSettingsState
   setAppearance: (patch: Partial<AppearanceSettings>) => void
   setLanguage: (patch: Partial<LanguageSettings>) => void
   setCamera: (patch: Partial<CameraSettings>) => void
@@ -115,6 +149,9 @@ export interface SettingsState {
   setCaptionPreset: (preset: CaptionSettings['preset']) => void
   setGestures: (patch: Partial<GestureSettings>) => void
   setGestureBinding: (action: CameraGestureAction, gesture: GestureBinding) => void
+  setRecognition: (patch: Partial<RecognitionSettingsState>) => void
+  setRecognitionPreset: (preset: RecognitionPreset) => void
+  setSpeech: (patch: Partial<SpeechSettingsState>) => void
   resetAppearance: () => void
 }
 
@@ -192,6 +229,66 @@ export const defaultGestures: GestureSettings = {
   },
 }
 
+export const defaultRecognition: RecognitionSettingsState = {
+  preset: 'balanced',
+  minConfidence: 0.45,
+  stabilityMs: 260,
+  minDurationMs: 320,
+  maxDurationMs: 4000,
+  releaseMs: 220,
+  transitionMs: 200,
+  jitterDistance: 0.035,
+  handLossMs: 260,
+  duplicateSuppression: true,
+  twoHandMode: true,
+  numberOperation: 'independent',
+  motionSmoothing: 0.5,
+  windowMs: 1100,
+}
+
+export const defaultSpeech: SpeechSettingsState = {
+  mode: 'manual',
+  preview: true,
+  autoEnabled: false,
+  gapMs: 140,
+  rate: 1,
+  pitch: 1,
+  volume: 1,
+}
+
+export const recognitionPresets: Record<RecognitionPreset, Partial<RecognitionSettingsState>> = {
+  beginner: {
+    minConfidence: 0.6,
+    stabilityMs: 420,
+    minDurationMs: 520,
+    releaseMs: 360,
+    transitionMs: 320,
+    jitterDistance: 0.05,
+    handLossMs: 340,
+    duplicateSuppression: true,
+  },
+  balanced: {
+    minConfidence: 0.45,
+    stabilityMs: 260,
+    minDurationMs: 320,
+    releaseMs: 220,
+    transitionMs: 200,
+    jitterDistance: 0.035,
+    handLossMs: 260,
+    duplicateSuppression: true,
+  },
+  responsive: {
+    minConfidence: 0.38,
+    stabilityMs: 170,
+    minDurationMs: 210,
+    releaseMs: 150,
+    transitionMs: 130,
+    jitterDistance: 0.025,
+    handLossMs: 180,
+    duplicateSuppression: true,
+  },
+}
+
 /** Actions in the order the settings screen lists them. */
 export const CAMERA_GESTURE_ACTIONS: CameraGestureAction[] = [
   'capture',
@@ -258,6 +355,8 @@ export const useSettings = create<SettingsState>()(
       accessibility: defaultAccessibility,
       captions: { ...defaultCaptionSettings },
       gestures: defaultGestures,
+      recognition: { ...defaultRecognition },
+      speech: { ...defaultSpeech },
 
       setAppearance: (patch) => set({ appearance: { ...get().appearance, ...patch } }),
       setLanguage: (patch) => set({ language: { ...get().language, ...patch } }),
@@ -276,6 +375,16 @@ export const useSettings = create<SettingsState>()(
             bindings: { ...get().gestures.bindings, [action]: gesture },
           },
         }),
+      setRecognition: (patch) => set({ recognition: { ...get().recognition, ...patch } }),
+      setRecognitionPreset: (preset) =>
+        set({
+          recognition: {
+            ...get().recognition,
+            ...recognitionPresets[preset],
+            preset,
+          },
+        }),
+      setSpeech: (patch) => set({ speech: { ...get().speech, ...patch } }),
       resetAppearance: () => set({ appearance: { ...defaultAppearance } }),
     }),
     {
@@ -290,6 +399,8 @@ export const useSettings = create<SettingsState>()(
         accessibility: state.accessibility,
         captions: state.captions,
         gestures: state.gestures,
+        recognition: state.recognition,
+        speech: state.speech,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<SettingsState>
@@ -302,6 +413,8 @@ export const useSettings = create<SettingsState>()(
           performance: { ...current.performance, ...saved.performance },
           accessibility: { ...current.accessibility, ...saved.accessibility },
           captions: { ...current.captions, ...saved.captions },
+          recognition: { ...current.recognition, ...saved.recognition },
+          speech: { ...current.speech, ...saved.speech },
           gestures: {
             ...current.gestures,
             ...saved.gestures,

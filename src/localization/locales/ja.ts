@@ -804,4 +804,9 @@ export const ja: Record<MessageKey, string> = {
   'status.poseOff': 'オフ',
   'status.poseReady': '肩座標を取得済み',
   'status.posePending': '肩を検出中',
+  'debug.title': '認識デバッグ',
+  'debug.note': 'イベントパイプラインのライブ状態。ここに表示される値は推定ではなく実際の値です。',
+  'debug.state': '状態',
+  'debug.stabilization': '安定化',
+  'debug.lastEvent': '最後の確定',
 }

@@ -823,4 +823,9 @@ export const fr: Record<MessageKey, string> = {
   'status.poseOff': 'Désactivée',
   'status.poseReady': 'Repère des épaules prêt',
   'status.posePending': 'En attente des épaules',
+  'debug.title': 'Débogage de la reconnaissance',
+  'debug.note': 'État en direct du pipeline d’événements. Les valeurs sont mesurées, pas estimées.',
+  'debug.state': 'État',
+  'debug.stabilization': 'Stabilisation',
+  'debug.lastEvent': 'Dernier validé',
 }

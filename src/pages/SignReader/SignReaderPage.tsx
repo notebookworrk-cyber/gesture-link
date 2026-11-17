@@ -21,6 +21,10 @@ import { speak } from '@/captions/speech'
 import type { CaptionLine } from '@/captions/types'
 import { localeMeta, useI18n } from '@/localization/i18n'
 import type { MessageKey } from '@/localization/locales/en'
+import { palmMotion, palmPoints, recognitionSettingsFrom, trackerOptionsFrom } from '@/recognition/config'
+import { SignEventManager } from '@/recognition/SignEventManager'
+import { TwoHandTracker } from '@/recognition/TwoHandTracker'
+import type { RecognitionCandidate, RecognitionEvent, RecognitionPhase } from '@/recognition/types'
 import { useSettings } from '@/settings/settingsStore'
 import { classify } from '@/signs/classifier'
 import { featuresFromReading, windowFrameFromReading } from '@/signs/features'
@@ -31,7 +35,6 @@ import {
   deleteLast,
   readFrame,
   sentenceText,
-  SignStabilizer,
   type ReaderMode,
   type ReaderReading,
   type SentenceToken,
@@ -45,9 +48,6 @@ import type { StaticGestureId } from '@/vision/types'
 import { ReaderInspector } from './ReaderInspector'
 import styles from './signreader.module.css'
 
-/** Frames a reading has to hold before it becomes a word. */
-const STABLE_FRAMES = 3
-
 export function SignReaderPage() {
   const { t, formatNumber, formatDate } = useI18n()
   const engine = getVisionEngine()
@@ -59,6 +59,8 @@ export function SignReaderPage() {
   const captionSize = useSettings((state) => state.accessibility.captionSize)
   const captionsVisible = useSettings((state) => state.accessibility.captionsVisible)
   const setAccessibility = useSettings((state) => state.setAccessibility)
+  const recognition = useSettings((state) => state.recognition)
+  const cameraMirror = useSettings((state) => state.camera.mirror)
 
   const labels = useSigns((state) => state.labels)
   const model = useSigns((state) => state.model)
@@ -79,6 +81,9 @@ export function SignReaderPage() {
   const [captionLines, setCaptionLines] = useState<CaptionLine[]>([])
   const [notice, setNotice] = useState<string | null>(null)
   const [announcement, setAnnouncement] = useState('')
+  const [phase, setPhase] = useState<RecognitionPhase>('idle')
+  const [stabilization, setStabilization] = useState(0)
+  const [lastEvent, setLastEvent] = useState('')
   const announceAlternateRef = useRef(false)
 
   const modeRef = useRef(mode)
@@ -88,10 +93,16 @@ export function SignReaderPage() {
   const autoAddRef = useRef(autoAdd)
   autoAddRef.current = autoAdd
 
-  const stabilizerRef = useRef(new SignStabilizer(STABLE_FRAMES))
+  const eventsRef = useRef<SignEventManager | null>(null)
+  if (!eventsRef.current) {
+    eventsRef.current = new SignEventManager(recognitionSettingsFrom(recognition))
+  }
+  const trackerRef = useRef<TwoHandTracker | null>(null)
+  if (!trackerRef.current) {
+    trackerRef.current = new TwoHandTracker(trackerOptionsFrom(recognition, cameraMirror))
+  }
+  const palmRef = useRef<ReturnType<typeof palmPoints>>({})
   const windowRef = useRef(new SignWindowBuffer())
-  const committedRef = useRef('')
-  const releasedRef = useRef(true)
 
   const captionEngineRef = useRef<CaptionEngine | null>(null)
   if (!captionEngineRef.current) captionEngineRef.current = new CaptionEngine(captions)
@@ -116,69 +127,59 @@ export function SignReaderPage() {
   }, [])
 
   const commit = useCallback(
-    (result: ReaderReading) => {
-      const at = Date.now()
+    (event: RecognitionEvent) => {
       const entry: HistoryEntry = {
-        id: `h_${at.toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-        text: result.text,
-        labelId: result.key,
-        confidence: result.confidence,
-        mode: modeRef.current,
-        at,
+        id: event.id,
+        text: event.text,
+        labelId: event.key,
+        confidence: event.confidence,
+        mode:
+          event.source === 'two-hand' || event.source === 'number' ? 'model' : event.source,
+        at: event.committedAt,
       }
       setHistory((current) => [entry, ...current].slice(0, 40))
+      setLastEvent(event.text)
       // Screen readers announce committed signs regardless of the caption
       // preset. The alternating space lets the same sign be announced twice.
       setAnnouncement(
-        announceAlternateRef.current ? `${result.text}\u00a0` : result.text,
+        announceAlternateRef.current ? `${event.text}\u00a0` : event.text,
       )
       announceAlternateRef.current = !announceAlternateRef.current
 
       const instance = captionEngineRef.current
       if (instance) {
-        instance.push({ text: result.text, labelId: result.key, at })
+        instance.push({ text: event.text, labelId: event.key, at: event.committedAt })
         setCaptionLines([...instance.snapshot.lines])
       }
-
-      if (autoAddRef.current) setTokens((current) => appendWord(current, result.text))
+      if (autoAddRef.current) setTokens((current) => appendWord(current, event.text))
     },
     [],
   )
 
-  /**
-   * Shared commit path for both recognition kinds: stabilise, do not re-emit a
-   * sign while it is held, and only append once it has been released.
-   */
-  const applyReading = useCallback(
-    (result: ReaderReading, hasHand: boolean) => {
-      setReading(result)
-      if (!hasHand) {
-        releasedRef.current = true
-        stabilizerRef.current.reset()
-        return
-      }
-      if (result.unknown) {
-        stabilizerRef.current.reset()
-        return
-      }
-      const stable = stabilizerRef.current.push(result.key)
-      if (!stable) return
-      if (!releasedRef.current && result.key === committedRef.current) return
-      committedRef.current = result.key
-      releasedRef.current = false
-      commit(result)
-    },
-    [commit],
-  )
+  // Only the event manager can produce a sentence entry or a speech event.
+  useEffect(() => {
+    const manager = eventsRef.current
+    if (!manager) return
+    return manager.subscribe((event) => commit(event))
+  }, [commit])
 
-  // Recognition runs on the shared engine's frames.
+  // Recognition runs on the shared engine's frames, but commits are owned by
+  // the event manager rather than by this component.
   useEffect(
     () =>
       engine.subscribeFrames((frame) => {
-        const hand = frame.hands[0] ?? null
+        const tracker = trackerRef.current
+        const manager = eventsRef.current
+        if (!tracker || !manager) return
+        const update = tracker.update(frame)
+        const motion = palmMotion(update, palmRef.current)
+        palmRef.current = palmPoints(update)
+
+        const hand = update.right?.reading ?? update.left?.reading ?? null
         const currentMode = modeRef.current
         const currentModel = modelRef.current
         const buffer = windowRef.current
+        let readingResult: ReaderReading
 
         // A window model scores a time-normalised sequence, so it needs the
         // rolling buffer. A frame model scores the current reading directly.
@@ -188,44 +189,67 @@ export function SignReaderPage() {
             : null
           const window = buffer.push(frame.timestamp, vector)
           if (!window) {
-            // While a window fills, keep the previous reading instead of
-            // flickering between empty and recognised twice a second.
             if (!hand) {
-              releasedRef.current = true
-              stabilizerRef.current.reset()
               setReading({ key: 'none', text: '', confidence: 0, unknown: true })
             }
             return
           }
           const prediction = classify(currentModel, window)
-          applyReading(readFrame('model', hand, prediction), true)
-          return
+          readingResult = readFrame('model', hand, prediction)
+        } else {
+          buffer.reset()
+          const modelResult =
+            currentMode === 'model' && currentModel && hand
+              ? classify(currentModel, featuresFromReading(hand))
+              : null
+          readingResult = readFrame(currentMode, hand, modelResult)
         }
 
-        buffer.reset()
-        const modelResult =
-          currentMode === 'model' && currentModel && hand
-            ? classify(currentModel, featuresFromReading(hand))
-            : null
-        applyReading(readFrame(currentMode, hand, modelResult), Boolean(hand))
+        setReading(readingResult)
+        const candidate: RecognitionCandidate | null = readingResult.unknown
+          ? null
+          : {
+              key: readingResult.key,
+              text: readingResult.text,
+              confidence: readingResult.confidence,
+              source: currentMode === 'model' ? 'model' : currentMode,
+              hands: update.visible,
+            }
+        manager.update(candidate, motion, frame.timestamp, {
+          lost: update.lost,
+          latencyMs: frame.inferenceMs,
+        })
+        const debug = manager.debug
+        setPhase(debug.phase)
+        setStabilization(debug.stabilization)
       }),
-    [applyReading, engine],
+    [engine],
   )
 
-  // Switching the mode starts a fresh stabiliser, so a reading from the old
-  // mode can never leak into the new one.
+  // Switching the mode starts a fresh recognition session, so a reading from
+  // the old mode can never leak into the new one.
   useEffect(() => {
-    stabilizerRef.current.reset()
+    eventsRef.current?.reset()
+    trackerRef.current?.reset()
     windowRef.current.reset()
-    committedRef.current = ''
-    releasedRef.current = true
+    palmRef.current = {}
+    setPhase('idle')
   }, [mode])
 
   // A newly trained model may use a different feature layout, so the window
   // buffer must not carry frames recorded for the previous model.
   useEffect(() => {
     windowRef.current.reset()
+    eventsRef.current?.reset()
   }, [model])
+
+  // Reconfigure the pipeline when the advanced recognition settings change.
+  useEffect(() => {
+    eventsRef.current?.configure(recognitionSettingsFrom(recognition))
+    trackerRef.current?.configure(trackerOptionsFrom(recognition, cameraMirror))
+    windowRef.current.reset()
+    palmRef.current = {}
+  }, [recognition, cameraMirror])
 
   useEffect(() => {
     if (!notice) return
@@ -333,6 +357,7 @@ export function SignReaderPage() {
       captionsVisible={captionsVisible}
       labelCount={labels.length}
       hasModel={Boolean(model)}
+      debug={{ phase, stabilization, lastEvent }}
       onCaptionMode={(captionMode) => useSettings.getState().setCaptions({ mode: captionMode })}
       onCaptionsVisible={(value) => setAccessibility({ captionsVisible: value })}
       onLoadTranscript={loadTranscript}

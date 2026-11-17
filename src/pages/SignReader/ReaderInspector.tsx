@@ -17,6 +17,7 @@ interface ReaderInspectorProps {
   captionsVisible: boolean
   labelCount: number
   hasModel: boolean
+  debug: { phase: string; stabilization: number; lastEvent: string }
   onCaptionMode: (mode: CaptionMode) => void
   onCaptionsVisible: (visible: boolean) => void
   onLoadTranscript: (transcript: Transcript) => void
@@ -32,6 +33,7 @@ export function ReaderInspector({
   captionsVisible,
   labelCount,
   hasModel,
+  debug,
   onCaptionMode,
   onCaptionsVisible,
   onLoadTranscript,
@@ -106,6 +108,24 @@ export function ReaderInspector({
             {t('reader.confidence')}: {formatNumber(Math.round(reading.confidence * 100))}%
           </p>
         )}
+      </Panel>
+
+      <Panel title={t('debug.title')}>
+        <p className={styles.inspectorNote}>{t('debug.note')}</p>
+        <dl className={styles.detailList}>
+          <div>
+            <dt>{t('debug.state')}</dt>
+            <dd className="mono">{debug.phase}</dd>
+          </div>
+          <div>
+            <dt>{t('debug.stabilization')}</dt>
+            <dd>{formatNumber(Math.round(debug.stabilization * 100))}%</dd>
+          </div>
+          <div>
+            <dt>{t('debug.lastEvent')}</dt>
+            <dd>{debug.lastEvent || '—'}</dd>
+          </div>
+        </dl>
       </Panel>
 
       <Panel title={t('reader.transcripts')}>

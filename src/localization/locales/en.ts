@@ -810,6 +810,11 @@ export const en = {
   'status.poseOff': 'Off',
   'status.poseReady': 'Shoulder frame ready',
   'status.posePending': 'Waiting for shoulders',
+  'debug.title': 'Recognition debug',
+  'debug.note': 'Live state from the event pipeline. Values here are measured, not estimated.',
+  'debug.state': 'State',
+  'debug.stabilization': 'Stabilization',
+  'debug.lastEvent': 'Last committed',
 } as const
 
 export type MessageKey = keyof typeof en

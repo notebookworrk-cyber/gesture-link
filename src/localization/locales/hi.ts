@@ -806,4 +806,9 @@ export const hi: Record<MessageKey, string> = {
   'status.poseOff': 'बंद',
   'status.poseReady': 'कंधे का आधार तैयार',
   'status.posePending': 'कंधों की प्रतीक्षा',
+  'debug.title': 'पहचान डिबग',
+  'debug.note': 'इवेंट पाइपलाइन की लाइव स्थिति। यहाँ के मान मापे गए हैं, अनुमानित नहीं।',
+  'debug.state': 'स्थिति',
+  'debug.stabilization': 'स्थिरता',
+  'debug.lastEvent': 'अंतिम किए गए',
 }

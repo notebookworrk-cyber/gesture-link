@@ -814,4 +814,9 @@ export const es: Record<MessageKey, string> = {
   'status.poseOff': 'Desactivada',
   'status.poseReady': 'Marco de hombros listo',
   'status.posePending': 'Esperando hombros',
+  'debug.title': 'Depuración del reconocimiento',
+  'debug.note': 'Estado en vivo de la canalización de eventos. Los valores son medidos, no estimados.',
+  'debug.state': 'Estado',
+  'debug.stabilization': 'Estabilización',
+  'debug.lastEvent': 'Último confirmado',
 }

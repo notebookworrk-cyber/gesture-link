@@ -812,4 +812,9 @@ export const de: Record<MessageKey, string> = {
   'status.poseOff': 'Aus',
   'status.poseReady': 'Schulterrahmen bereit',
   'status.posePending': 'Warte auf Schultern',
+  'debug.title': 'Erkennungs-Debug',
+  'debug.note': 'Live-Zustand der Ereignis-Pipeline. Die Werte sind gemessen, nicht geschätzt.',
+  'debug.state': 'Zustand',
+  'debug.stabilization': 'Stabilisierung',
+  'debug.lastEvent': 'Zuletzt bestätigt',
 }
