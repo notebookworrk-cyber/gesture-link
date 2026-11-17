@@ -116,14 +116,28 @@ recognition quality and the 1.1 s/350 ms timing are **not** verified.
   picker. Acceptance for the remainder: unit tests for the controls and a
   browser check confirming a real utterance only with a user-visible voice.
 
-## Stage 5 — Captions, dictionary and history (Pending)
+## Stage 5 — Captions, dictionary and history (Built, dictionary browser-checked)
 
-- Captions consume segmented sign events, not raw frames, with per-word timing.
-- Dictionary view over the user's labels: sample count, last trained, model
-  coverage; a word without samples is marked missing, not "coming soon".
-- History with timestamps, replay of the recorded landmark window where
-  available, and export.
-- All new strings in the six catalogues in the same commit.
+- Captions already consumed one committed (stabilised) sign event per reading
+  with a timestamp, not raw frames; no raw-frame caption path was introduced.
+  Per-word timing is recorded on the history entry and in the transcript, but
+  the caption engine uses its own sentence timing rather than word durations.
+- Added a **Sign Dictionary** workspace (`/dictionary`) in the Library group:
+  category, description, sample count and last recording date per label, an
+  all/in-model/needs-work filter and category picker, and honest empty states.
+  “In model” only means the current classifier has prototypes for that label;
+  the page explicitly refuses to present it as an accuracy claim. Backed by a
+  pure `buildDictionary` helper with five unit tests.
+- Reader history entries now carry the recognition mode alongside confidence and
+  time, and can be exported as a real JSON file through `serializeHistory`
+  (three unit tests). Raw landmark-window replay was not built and is listed as
+  such in `FEATURE_STATUS.md`.
+- All new strings ship in the six catalogues in the same commit.
+
+Verification: 216 tests in 28 files; typecheck, ESLint and production build
+clean (1,168 kB, 360 kB gzip). The dictionary page was checked in headless
+Chrome at 1440 and 390 px: empty state, no-model note, filter, sidebar link, no
+page errors and no horizontal overflow.
 
 ## Stage 6 — Interface redesign (Pending)
 

@@ -249,6 +249,13 @@
 
 /* ------------------------------------------------------------------ history */
 
+.historyActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
 .historyList {
   display: grid;
   gap: 2px;

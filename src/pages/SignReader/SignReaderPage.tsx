@@ -36,6 +36,7 @@ import {
   type ReaderReading,
   type SentenceToken,
 } from '@/signs/reader'
+import { serializeHistory, type HistoryEntry } from '@/signs/history'
 import { useSigns } from '@/signs/store'
 import type { Transcript, TranscriptEntry } from '@/signs/types'
 import { getVisionEngine } from '@/vision/VisionEngine'
@@ -43,14 +44,6 @@ import { useVisionStatus } from '@/vision/visionStatus'
 import type { StaticGestureId } from '@/vision/types'
 import { ReaderInspector } from './ReaderInspector'
 import styles from './signreader.module.css'
-
-interface HistoryEntry {
-  id: string
-  text: string
-  labelId: string
-  confidence: number
-  at: number
-}
 
 /** Frames a reading has to hold before it becomes a word. */
 const STABLE_FRAMES = 3
@@ -128,6 +121,7 @@ export function SignReaderPage() {
         text: result.text,
         labelId: result.key,
         confidence: result.confidence,
+        mode: modeRef.current,
         at,
       }
       setHistory((current) => [entry, ...current].slice(0, 40))
@@ -289,6 +283,21 @@ export function SignReaderPage() {
     link.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 4000)
   }, [text])
+
+  const exportHistory = useCallback(() => {
+    if (history.length === 0) return
+    const blob = new Blob([serializeHistory(history, Date.now())], {
+      type: 'application/json;charset=utf-8',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `gesturelink-history-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 4000)
+  }, [history])
 
   const loadTranscript = useCallback((transcript: Transcript) => {
     const loaded: SentenceToken[] = []
@@ -512,11 +521,23 @@ export function SignReaderPage() {
               <section className={styles.card} aria-label={t('reader.history')}>
                 <div className={styles.cardHead}>
                   <h2>{t('reader.history')}</h2>
-                  {history.length > 0 ? (
-                    <Button size="sm" variant="ghost" onClick={() => setHistory([])}>
-                      {t('reader.clearHistory')}
-                    </Button>
-                  ) : null}
+                  <div className={styles.historyActions}>
+                    {history.length > 0 ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        icon={<Download aria-hidden="true" />}
+                        onClick={exportHistory}
+                      >
+                        {t('reader.exportHistory')}
+                      </Button>
+                    ) : null}
+                    {history.length > 0 ? (
+                      <Button size="sm" variant="ghost" onClick={() => setHistory([])}>
+                        {t('reader.clearHistory')}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
                 {history.length === 0 ? (
                   <p className={styles.note}>{t('reader.historyEmpty')}</p>

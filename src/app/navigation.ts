@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  BookOpen,
   Camera,
   Crosshair,
   GraduationCap,
@@ -48,6 +49,12 @@ export const navigation: NavGroup[] = [
     labelKey: 'nav.libraryGroup',
     items: [
       { to: '/gallery', labelKey: 'nav.gallery', titleKey: 'page.gallery.title', icon: Image },
+      {
+        to: '/dictionary',
+        labelKey: 'nav.dictionary',
+        titleKey: 'page.dictionary.title',
+        icon: BookOpen,
+      },
       {
         to: '/training',
         labelKey: 'nav.training',
