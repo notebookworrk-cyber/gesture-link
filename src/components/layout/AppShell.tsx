@@ -5,6 +5,7 @@ import { useI18n } from '@/localization/i18n'
 import { useSettings } from '@/settings/settingsStore'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { WorkspaceStatusBar } from './WorkspaceStatusBar'
 import styles from './shell.module.css'
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -41,6 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main id="main-content" className={styles.content} tabIndex={-1}>
           {children}
         </main>
+        <WorkspaceStatusBar />
       </div>
     </div>
   )

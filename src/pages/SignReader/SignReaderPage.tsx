@@ -78,6 +78,8 @@ export function SignReaderPage() {
   const [tokens, setTokens] = useState<SentenceToken[]>([])
   const [captionLines, setCaptionLines] = useState<CaptionLine[]>([])
   const [notice, setNotice] = useState<string | null>(null)
+  const [announcement, setAnnouncement] = useState('')
+  const announceAlternateRef = useRef(false)
 
   const modeRef = useRef(mode)
   modeRef.current = mode
@@ -125,6 +127,12 @@ export function SignReaderPage() {
         at,
       }
       setHistory((current) => [entry, ...current].slice(0, 40))
+      // Screen readers announce committed signs regardless of the caption
+      // preset. The alternating space lets the same sign be announced twice.
+      setAnnouncement(
+        announceAlternateRef.current ? `${result.text}\u00a0` : result.text,
+      )
+      announceAlternateRef.current = !announceAlternateRef.current
 
       const instance = captionEngineRef.current
       if (instance) {
@@ -341,6 +349,9 @@ export function SignReaderPage() {
   return (
     <Workspace inspector={inspector}>
       <div className={styles.page}>
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </div>
         <header className={styles.header}>
           <div className={styles.headerText}>
             <span className={styles.eyebrow}>{t('nav.workspaceGroup')}</span>

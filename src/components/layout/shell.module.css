@@ -20,6 +20,52 @@
   background: var(--canvas);
 }
 
+/* ------------------------------------------------------------ status bar */
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex: none;
+  height: 26px;
+  padding: 0 12px;
+  border-top: 1px solid var(--stroke-1);
+  background: var(--surface-1);
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.statusItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.statusItem strong {
+  color: var(--text-2);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusSpacer {
+  flex: 1;
+}
+
+@media (max-width: 720px) {
+  .statusBar {
+    gap: var(--sp-2);
+  }
+
+  .statusItem:nth-child(3) {
+    display: none;
+  }
+}
+
 .skipLink {
   position: fixed;
   top: -60px;

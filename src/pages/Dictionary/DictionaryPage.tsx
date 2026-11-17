@@ -67,7 +67,7 @@ export function DictionaryPage() {
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.headerText}>
-            <span className={styles.eyebrow}>{t('nav.libraryGroup')}</span>
+            <span className={styles.eyebrow}>{t('nav.workspaceGroup')}</span>
             <h1>{t('page.dictionary.title')}</h1>
             <p>{t('page.dictionary.lead')}</p>
           </div>

@@ -37,41 +37,41 @@ export const navigation: NavGroup[] = [
         icon: Hand,
       },
       {
+        to: '/dictionary',
+        labelKey: 'nav.dictionary',
+        titleKey: 'page.dictionary.title',
+        icon: BookOpen,
+      },
+    ],
+  },
+  {
+    labelKey: 'nav.studioGroup',
+    items: [
+      {
         to: '/whiteboard',
         labelKey: 'nav.whiteboard',
         titleKey: 'page.whiteboard.title',
         icon: PenLine,
       },
       { to: '/camera', labelKey: 'nav.camera', titleKey: 'page.camera.title', icon: Camera },
-    ],
-  },
-  {
-    labelKey: 'nav.libraryGroup',
-    items: [
       { to: '/gallery', labelKey: 'nav.gallery', titleKey: 'page.gallery.title', icon: Image },
-      {
-        to: '/dictionary',
-        labelKey: 'nav.dictionary',
-        titleKey: 'page.dictionary.title',
-        icon: BookOpen,
-      },
       {
         to: '/training',
         labelKey: 'nav.training',
         titleKey: 'page.training.title',
         icon: GraduationCap,
       },
-    ],
-  },
-  {
-    labelKey: 'nav.systemGroup',
-    items: [
       {
         to: '/calibration',
         labelKey: 'nav.calibration',
         titleKey: 'page.calibration.title',
         icon: Crosshair,
       },
+    ],
+  },
+  {
+    labelKey: 'nav.systemGroup',
+    items: [
       {
         to: '/settings',
         labelKey: 'nav.settings',

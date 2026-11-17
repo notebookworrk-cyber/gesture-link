@@ -139,16 +139,30 @@ clean (1,168 kB, 360 kB gzip). The dictionary page was checked in headless
 Chrome at 1440 and 390 px: empty state, no-model note, filter, sidebar link, no
 page errors and no horizontal overflow.
 
-## Stage 6 — Interface redesign (Pending)
+## Stage 6 — Interface redesign (Built, browser-checked; two deviations)
 
-- Eight main navigation items plus a **Studio** group (Whiteboard, Gesture
-  Camera, Gallery, Training, Calibration) to keep the primary rail short.
-- One workspace layout with consistent header, inspector and status bar; the
-  Calibration workspace already follows it.
-- Accessibility pass: focus order, live-region announcements for emitted signs,
-  reduced-motion and contrast checks.
-- Acceptance: 1440/1280/1024/390 screenshots and a Japanese pass, same as the
-  2.0 gate.
+- Navigation is grouped as Workspace (Home, Sign Reader, Dictionary), Studio
+  (Whiteboard, Gesture Camera, Gallery, Training, Calibration) and System
+  (Settings). The sidebar shows 3.0. **Deviation:** the plan called for eight
+  main items; the app only has nine real workspaces, so no placeholder pages were
+  invented to reach that number.
+- A shared status strip is rendered below every workspace by `AppShell`. It
+  reads the sign store and vision status directly, so it reports actual model
+  coverage, hands/fps and pose state — including honest "none"/"off" states.
+- Accessibility: committed signs are announced through an always-on polite
+  live region (the caption preset no longer controls announcements). The
+  existing skip link, Escape handling, focus return and responsive inspector
+  drawer were re-checked. **Deferred:** a dedicated reduced-motion/contrast
+  screenshot pass and a formal focus-order audit; those settings already exist
+  and are exercised by the settings store tests, not by a visual assertion.
+- No new route-level header rewrite: the pages keep their existing headers,
+  which already share the same token-driven surface. A full per-page header
+  rewrite was not worth the regression risk at this stage.
+
+Verification: 216 tests in 28 files; typecheck, ESLint and production build
+clean (1,172 kB, 361 kB gzip); `npm run check:ui` passed (1440/1280/1024/390,
+Japanese and Hindi). A separate headless check confirmed the Studio group, its
+five links, the status strip and no mobile overflow at 1440 and 390 px.
 
 ## Stage 7 — Documentation and verification (Pending)
 

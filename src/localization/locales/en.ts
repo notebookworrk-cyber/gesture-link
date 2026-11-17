@@ -798,6 +798,18 @@ export const en = {
   'dictionary.record': 'Record',
   'dictionary.openReader': 'Sign Reader',
   'reader.exportHistory': 'Export history',
+  'nav.studioGroup': 'Studio',
+  'status.barLabel': 'Workspace status',
+  'status.model': 'Model',
+  'status.modelReady': '{signs} of {labels} signs in model',
+  'status.modelNone': 'No model',
+  'status.modelError': 'Model unavailable',
+  'status.tracking': 'Tracking',
+  'status.handsFps': '{hands} hands · {fps} fps',
+  'status.pose': 'Pose',
+  'status.poseOff': 'Off',
+  'status.poseReady': 'Shoulder frame ready',
+  'status.posePending': 'Waiting for shoulders',
 } as const
 
 export type MessageKey = keyof typeof en

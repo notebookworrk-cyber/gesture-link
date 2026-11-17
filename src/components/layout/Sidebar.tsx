@@ -62,7 +62,7 @@ export function Sidebar() {
         {showLabels ? (
           <span className={styles.brandText}>
             <span className={styles.brandName}>{t('app.name')}</span>
-            <span className={styles.brandMeta}>2.0 · LOCAL</span>
+            <span className={styles.brandMeta}>3.0 · LOCAL</span>
           </span>
         ) : null}
         {isMobile ? (

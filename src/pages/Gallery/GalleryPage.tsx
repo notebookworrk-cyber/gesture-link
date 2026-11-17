@@ -56,7 +56,7 @@ export function GalleryPage() {
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.headerText}>
-            <span className={styles.eyebrow}>{t('nav.libraryGroup')}</span>
+            <span className={styles.eyebrow}>{t('nav.studioGroup')}</span>
             <h1>{t('page.gallery.title')}</h1>
             <p>{t('page.gallery.lead')}</p>
           </div>
