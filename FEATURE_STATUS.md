@@ -1,11 +1,35 @@
 # Feature status
 
-Honest state of GestureLink 3.0. This file is updated at the end of every
+Honest state of GestureLink 4.0. This file is updated at the end of every
 milestone. A feature is only listed under **Completed** when it has been run in
 a browser; model accuracy that needs a real hand in front of a camera is never
 claimed from a headless test.
 
-Last updated: stage 7 (documentation, version 3.0 and final gates).
+Last updated: GestureLink 4.0 (stateful recognition, two hands, event-only speech).
+
+## GestureLink 4.0 summary
+
+- **Recognition as events:** a stateful pipeline (`SignSegmenter`,
+  `PredictionStabilizer`, `DuplicateSuppressor`, `SignEventManager`) replaced
+  the 3.0 frame-streak commit. A prediction is no longer a word: only a
+  committed event can reach the sentence, captions or speech. A held sign or
+  small hand movement cannot produce a second word. Details:
+  [`RECOGNITION_UPGRADE.md`](./RECOGNITION_UPGRADE.md).
+- **Two hands:** independent hand states with stable physical slots, temporary
+  loss and reacquisition; per-hand numbers with explicit addition,
+  subtraction, concatenation or independent display (unknown is never zero);
+  combined two-hand temporal classes in model v3 that refuse a missing hand.
+- **Speech:** a dedicated event-only engine with duplicate suppression,
+  ordered queue, sentence/word/manual/auto modes, preview gate, pause/resume,
+  stop, replay and per-phrase cancellation.
+- **UI:** per-hand/face/body tracking indicators with measured confidence,
+  slot-coloured hand overlays, a recognition debug panel and a Recognition
+  settings section with presets.
+- **Verification:** 250 unit tests in 32 files, typecheck and lint pass. Logic
+  tests for the ten reported bugs are in
+  [`TWO_HAND_TEST_REPORT.md`](./TWO_HAND_TEST_REPORT.md) and
+  [`SPEAKER_TEST_REPORT.md`](./SPEAKER_TEST_REPORT.md). Real-hand and real-voice
+  checks are pending, not passed.
 
 ## Completed
 
@@ -32,25 +56,25 @@ Last updated: stage 7 (documentation, version 3.0 and final gates).
 | Gesture bindings | Peace starts the countdown, thumbs up moves to the next filter, open palm shows or hides the controls, and pinch (OK) toggles the sticker effects. Every binding is remappable in Settings → Hand tracking, the master switch disables gesture control entirely, and conflicting bindings are reported because only the first action of a pair runs. The countdown is cancelled when the bound shape is released before it finishes. |
 | Gallery | Thumbnail grid over the stored photographs, full-size preview, rename, download (real file), delete behind a confirmation, date filter (all, today, 7 days, 30 days) and honest empty and error states. The stored list survives a reload; a deleted photograph does not come back. |
 | Sign dictionary | A Library workspace listing every label the user created with its category, description, sample count and last recording date. A segmented filter (all / in model / needs work) and a category picker narrow the list; labels with no samples are marked as such. A label is marked “in model” only when the current classifier has prototypes for it, and the page says plainly that this is not an accuracy claim and that the Training Studio evaluation measures accuracy on held-out recordings. Empty states distinguish “no signs yet” from “no filter match”. Browser-checked at 1440 and 390 px with no console errors or horizontal overflow. |
-| Quality gates | `npm run verify` (TypeScript, ESLint, 216 Vitest unit tests in 28 files and production build), the Playwright UI check, the fake-camera vision check, the whiteboard check (`scripts/whiteboard-check.mjs`) and the camera check (`scripts/camera-check.mjs`): live preview pixels, real filter changes on the canvas, filter strength, sticker selection, two captures, gallery listing, rename, a real download, delete with confirmation, delete persistence after a reload, a binding conflict warning, 1440/1280/1024/390 layouts and a Japanese pass. The dictionary page and the Studio navigation/status strip were additionally checked in headless Chrome at 1440 and 390 px (no console errors, no mobile overflow). Unit coverage includes i18n completeness and placeholders, settings and gesture bindings, One Euro, geometry, feature extraction, gesture state, vision config, whiteboard geometry/export, photo filters and stickers, the photo store, temporal buffer, hand identity, landmark normalisation, frame scheduling, calibration, diagnostics, speech queue, window features, sliding sign windows, take conversion, the v2 classifier, dictionary state and history export. |
-| Build and assets | MediaPipe wasm and both model files are copied from `node_modules` / `models` into `public` by `predev`/`prebuild`, so the app works offline. At runtime the landmarker models are requested from Google's MediaPipe model store first — the same bytes as the bundled copies — because GitHub Pages was measured at roughly 60 s for the 7.8 MB hand model versus about 1 s from Google storage; the local copy remains the automatic fallback. Relative base path and hash routing for static hosting. |
+| Quality gates | `npm run verify` (TypeScript, ESLint, 250 Vitest unit tests in 32 files and production build), the Playwright UI check, the fake-camera vision check, the whiteboard check (`scripts/whiteboard-check.mjs`) and the camera check (`scripts/camera-check.mjs`) all pass on the 4.0 build. Unit coverage additionally includes the stateful sign event pipeline, two-hand tracking, numbers and composition, the v3 two-hand classifier, and the event-only speech engine. A separate headless check exercised the new Sign Reader modes, number panel, missing-two-hand-model note, tracking indicators and Recognition settings at 1440 px. |
+| Build and assets | MediaPipe wasm and both model files are copied from `node_modules` / `models` into `public` by `predev`/`prebuild`, so the app works offline. At runtime the landmarker models are requested from Google's MediaPipe model store first — the same bytes as the bundled copies — because GitHub Pages was measured at roughly 60 s for the 7.8 MB hand model versus about 1 s from Google storage; the local copy remains the automatic fallback, now reached after an 8 s timeout if the CDN stalls. Relative base path and hash routing for static hosting. |
 | Assets | SVG app icon (`public/favicon.svg`), local Inter variable font, Lucide icon set. |
-| Documentation for 3.0 | `README.md` describes the shipped workspaces, setup, scripts and limits; `SPEC.md` keeps the original 2.0 brief with a 3.0 delta note; `IMPLEMENTATION_PLAN.md` records each stage and its deviations; `MODEL_CARD.md` states that the vocabulary is the user's own recordings, that no ISL model or accuracy is bundled and why the public silhouette dataset was rejected. Package version, module status and the About/version displays now read 3.0.0. |
+| Documentation for 4.0 | `README.md` describes the shipped workspaces, setup, scripts and limits; `SPEC.md` keeps the original 2.0 brief with a 3.0 delta note; `IMPLEMENTATION_PLAN.md` records each stage and its deviations; `MODEL_CARD.md` states that the vocabulary is the user's own recordings, that no ISL model or accuracy is bundled and why the public silhouette dataset was rejected. `RECOGNITION_UPGRADE.md`, `TWO_HAND_TEST_REPORT.md` and `SPEAKER_TEST_REPORT.md` document the 4.0 engines and their verified versus pending tests. Package version, module status and About/version displays now read 4.0.0. |
 
 ## Gate notes
 
-- `npm run verify` passed end to end: typecheck, ESLint, 216 tests, production
-  build (1,172 kB app JS, 361 kB gzip; Vite prints its 900 kB chunk warning).
-  The warning is not suppressed by raising the limit.
-- `npm run check:ui`, `npm run check:vision` (after a rerun) and both
-  `scripts/whiteboard-check.mjs` and `scripts/camera-check.mjs` passed against
-  the production preview. The first vision run timed out once while the model
-  reloaded after a resolution change; the second run passed with measured
-  fps=19–22, inference 28–121 ms, 480 px processing and GPU under SwiftShader.
-- `scripts/camera-check.mjs` initially failed because a navigation aborted an
-  in-flight CDN model download and the harness counted `net::ERR_ABORTED` as an
-  error. The harness now ignores that specific abort during navigation; the
-  app's local model fallback is unchanged. The check passed afterwards.
+- `npm run verify` passed end to end: typecheck, ESLint, 250 tests, production
+  build (1,223 kB app JS, 376 kB gzip; Vite prints its 900 kB chunk warning).
+- `npm run check:ui`, `npm run check:vision`, `scripts/whiteboard-check.mjs` and
+  `scripts/camera-check.mjs` all passed on the production preview. The vision
+  check initially failed because a CDN model fetch could stall indefinitely;
+  `handTracker.ts` now applies an 8 s timeout before falling back to the bundled
+  local copy, and the harness ignores the resulting `net::ERR_ABORTED`.
+  Measured synthetic-camera values during the passing run ranged from fps 6–20
+  and inference 24–354 ms with both GPU and CPU delegates reported honestly.
+- The new UI paths were checked separately in headless Chrome: the number and
+  two-hand modes, operation selector, confirm button, honest missing-model note,
+  left/right/face indicators and Recognition settings. No page errors occurred.
 
 ## Implemented but not verified
 
@@ -68,7 +92,7 @@ Last updated: stage 7 (documentation, version 3.0 and final gates).
 | Sign Language Reader | Three recognition modes with the difference stated in the interface: **count** counts extended fingers from the landmarks and reads numbers; **shape** reports the seven geometric control hand shapes the engine already classifies and says they are controls, not sign words; **model** runs the locally trained classifier. A window model (`featureKind: 'window'`) compares a time-normalised ~1.1 s sequence — 12 resampled frames of hand shape, weighted shoulder-space position and the second-hand offset — so a sign that travels through space can be recognised; an older frame model still scores one reading. A temporal stabiliser only accepts a reading that stays the same for a short hold, and a sign is not re-emitted until it is released. Optional auto-add appends accepted signs to a sentence. The sentence builder supports space, undo-last, clear, copy, a real `.txt` download, saving to IndexedDB, and reading aloud through `speechSynthesis`, which is a queue: utterances play one at a time instead of cancelling each other, a language without a browser voice is refused with an honest message, and reading aloud again appends rather than cutting off. The transcript list loads and deletes saved sentences. Committed signs are announced through an always-on polite live region, independent of the caption preset. Reading history can be exported as a real JSON file with the reader mode, label id, confidence and ISO timestamps of each accepted sign. All strings exist in the six catalogues. | The synthetic camera has no hand, so the browser can only be checked for an honest "no hand" state. The window path, its timing, stabilisation, speech playback and transcript persistence across a reload have not been exercised with a real hand in a browser. There are no unit tests for the stabiliser yet. |
 | Captions | `CaptionEngine` turns readings into on-screen lines with six modes (live, words, sentences, subtitle, large, bilingual), configurable punctuation, capitalisation, line length, line count, duration, font, size, colour, background, outline, position and auto-scroll, with presets. The reader renders the caption area and the inspector switches mode and visibility. Bilingual mode only adds a second line when a real translation exists; the UI says that no translation model is bundled. | No browser run has checked the line timing, expiry, bilingual fallback or the subtitle and large presets on screen, and the engine has no unit tests. Caption size, font and colours have no Settings controls. |
 | Training Studio | Label management with four categories and an optional description; a take records up to 300 frames of the tracked hand and is converted to time-normalised windows on stop, using the same 1.1 s length and 350 ms stride as the live window buffer. A take too short to describe a sign is reported as such, and a successful take reports how many samples it saved. A named label must be selected before recording; per-label sample counts and review with individual removal. Training builds greedy farthest-point prototypes per label (1–12) in the model's own feature layout: window samples are preferred, and older single-frame samples are ignored and reported rather than mixed in. The model stores `featureKind`/`featureLength` and refuses a vector from another layout instead of comparing a prefix; version-1 models still load as frame models. Evaluation uses a held-out group split, so windows from one take never appear in both sets, and reports accuracy, unknown rate, sample counts, per-label precision and recall, plus how many test samples were excluded for using the other layout. Dataset export writes a real JSON file; import validates it and reports empty or invalid files. Labels, samples, models and transcripts are designed to survive a reload. | No end-to-end browser run with the synthetic camera yet. The unit tests cover window features, the buffer, take conversion, prototype building and the held-out evaluator, but not real classifier accuracy, which is unmeasured and will only be reported from a recorded evaluation. |
-| Bundle output | Production build succeeds: 1,172 kB app JS (gzip 361 kB) after the navigation restructure and shared status strip, 136 kB vision chunk (gzip 41 kB), 51 kB React chunk. | The main chunk is slightly over Vite's 900 kB warning threshold; a dynamic route split for the workspaces is the next bundle task. |
+| Bundle output | Production build succeeds: 1,223 kB app JS (gzip 376 kB) after the recognition and speech engines, 136 kB vision chunk (gzip 41 kB), 51 kB React chunk. | The main chunk exceeds Vite's 900 kB warning threshold; route-level code splitting is still pending. |
 | GitHub Pages deployment | `.github/workflows/deploy.yml` installs with `npm ci`, runs the production build and uploads `dist` with the official Pages actions on every push to `main`. | The workflow has not been observed running on the remote, and the published URL has not been opened. |
 
 ## Partial
@@ -86,8 +110,9 @@ Last updated: stage 7 (documentation, version 3.0 and final gates).
 - Replay of the recorded landmark window in the reader's history. The export
   contains the committed readings with timestamps, confidence and reader mode,
   not raw landmark sequences.
-- Two-handed sign recognition beyond the second hand's offset and presence: the
-  second hand's own landmark shape is not part of the model.
+- Full second-hand landmark shape in the **single-hand** model layout. The new
+  two-hand model does include both hands as one observation, but a v2 single-hand
+  model still only uses the other hand's offset and presence.
 - Per-label unknown thresholds. The reader uses one configurable threshold;
   distance distributions per label were not built.
 - Migration of older single-frame samples. They remain in IndexedDB, are not

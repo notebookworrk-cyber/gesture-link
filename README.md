@@ -1,14 +1,16 @@
-# GestureLink 3.0
+# GestureLink 4.0
 
 A local-first gesture workspace for the browser: a sign reader with
 motion-aware user-trained recognition, an air whiteboard, a gesture camera, a
 training studio, a sign dictionary and a shared MediaPipe tracking engine.
 
 **Status:** the application shell, design system, six-locale interface and
-settings are browser-verified. Tracking, training and recognition are unit
-tested and implemented, but real-hand accuracy has **not** been measured in
-this repository. See [`FEATURE_STATUS.md`](./FEATURE_STATUS.md) for the exact
-state and [`MODEL_CARD.md`](./MODEL_CARD.md) for what the model is and is not.
+settings are browser-verified. Recognition and speech were rebuilt as stateful
+event pipelines in 4.0 and are unit tested, but real-hand accuracy, real-voice
+output and hardware timing remain unverified. See
+[`FEATURE_STATUS.md`](./FEATURE_STATUS.md),
+[`RECOGNITION_UPGRADE.md`](./RECOGNITION_UPGRADE.md) and
+[`MODEL_CARD.md`](./MODEL_CARD.md).
 
 ## Principles
 
@@ -23,13 +25,14 @@ state and [`MODEL_CARD.md`](./MODEL_CARD.md) for what the model is and is not.
 
 ## What is included
 
-- **Sign Reader** — count, geometric-control-shape and trained-model modes; a
-  1.1 s sliding window over hand shape, shoulder-space movement and the
-  second-hand offset; stabilised commits, honest unknown state, captions,
-  sentence builder, queued speech and JSON history export.
-- **Training Studio** — labels in four categories, take recording,
-  take-grouped train/test split, prototype training, held-out evaluation,
-  dataset export/import and an honest report of samples that cannot be used.
+- **Sign Reader** — count, control-shape, trained-model, two-hand number and
+  combined two-hand sign modes. Recognition is a stateful event pipeline with
+  temporal voting, segmentation, duplicate suppression and release rules; a
+  held sign cannot become repeated words. Captions, event-only queued speech,
+  sentence builder and JSON history export consume only committed events.
+- **Training Studio** — labels in four categories, single-hand or paired
+  two-hand take recording, take-grouped train/test split, prototype training,
+  held-out evaluation, dataset export/import and honest ignored-sample counts.
 - **Sign Dictionary** — every label with its sample count, last recording and
   whether the current model actually covers it.
 - **Air Whiteboard** — six brushes, shapes, text, sticky notes, selection and
@@ -92,8 +95,10 @@ src/
   localization/ typed message catalogues and the translation hook
   pages/        one folder per workspace
   photos/       capture, filters, sticker anchors and photo store
+  recognition/  two-hand tracking, segmentation, stabilisation, events, numbers
   settings/     persisted settings store and document-level appearance sync
   signs/        features, sliding window, classifier, stores and dictionaries
+  speech/       event-only speech engine, queue, deduplication and sentences
   styles/       design tokens and global reset
   utils/        formatting and numeric helpers
   vision/       shared engine, camera, hand/pose/face trackers, calibration

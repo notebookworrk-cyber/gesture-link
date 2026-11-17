@@ -70,6 +70,22 @@ export type Delegate = 'GPU' | 'CPU'
  * dynamically so the home page and settings do not pay for the runtime until a
  * camera is actually started.
  */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error('Model load timed out')), ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 export class HandTracker {
   private landmarker: HandLandmarker | null = null
   private activeDelegate: Delegate = 'CPU'
@@ -103,7 +119,9 @@ export class HandTracker {
     let lastError: unknown = null
     for (const modelAssetPath of handModelCandidates()) {
       try {
-        this.landmarker = await create(modelAssetPath, options.delegate)
+        // The CDN copy is preferred because it is much faster on GitHub Pages,
+        // but a stalled request must not block the local fallback forever.
+        this.landmarker = await withTimeout(create(modelAssetPath, options.delegate), 8000)
         this.activeDelegate = options.delegate
         return this.activeDelegate
       } catch (error) {
@@ -112,7 +130,7 @@ export class HandTracker {
           try {
             // A GPU session can fail on constrained drivers. Falling back is
             // reported through `delegate`, never silently claimed as GPU.
-            this.landmarker = await create(modelAssetPath, 'CPU')
+            this.landmarker = await withTimeout(create(modelAssetPath, 'CPU'), 8000)
             this.activeDelegate = 'CPU'
             return this.activeDelegate
           } catch (cpuError) {

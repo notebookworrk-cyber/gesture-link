@@ -40,7 +40,7 @@ const context = await browser.newContext({
 const page = await context.newPage()
 page.on('console', (message) => {
   // MediaPipe logs its TFLite info lines as errors; they are not app failures.
-  if (message.type() === 'error' && !message.text().startsWith('INFO:')) {
+  if (message.type() === 'error' && !message.text().trimStart().startsWith('INFO:')) {
     consoleErrors.push(message.text())
   }
 })

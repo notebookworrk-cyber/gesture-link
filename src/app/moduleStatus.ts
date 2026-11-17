@@ -14,4 +14,4 @@ export const moduleStatus: Record<ModuleId, ModuleState> = {
   gallery: 'ready',
 }
 
-export const engineBuild = '3.0.0'
+export const engineBuild = '4.0.0'

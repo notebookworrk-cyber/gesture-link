@@ -17,13 +17,16 @@ for recognition.
 | Version | Feature kind | Input | Used for |
 | --- | --- | --- | --- |
 | 1 | `frame` | 69 values (63 hand-relative landmarks + 6 shape values) | Legacy single-reading models. Still load and score, but cannot represent movement. |
-| 2 | `window` | 912 values: 76 values × 12 time-normalised frames | Current model. A 1.1 s sliding window, emitted at most every 350 ms. |
+| 2 | `window` | 912 values: 76 values × 12 time-normalised frames | Single-hand movement windows. Still load and score. |
+| 3 | `two-hand` | 1,920 values: 160 values × 12 time-normalised frames | Current combined two-hand model. Both hands in fixed left/right slots plus relative distance, orientation, presence and interaction. |
 
 The model stores `featureKind` and `featureLength`. `classify()` refuses a
 vector whose length differs from the trained layout instead of silently
-comparing only a prefix. Window samples and frame samples are never mixed: if a
-window sample exists, older frame samples are ignored and counted in
-`ignoredSamples` / `ignoredTestCount`.
+comparing only a prefix. Feature layouts are never mixed: `selectSamples()`
+prefers two-hand samples, then window samples, then frame samples, and reports
+everything it ignored through `ignoredSamples` / `ignoredTestCount`. A v3 model
+refuses a single-hand vector, and a two-hand frame is rejected when either hand
+is missing.
 
 ## Inputs
 
@@ -35,8 +38,9 @@ window sample exists, older frame samples are ignored and counted in
   unit = shoulder width). Its x/y/z values are weighted ×3 so a trajectory is
   not drowned by 69 shape values. Without pose, the position block is zero and
   the window is shape-only — no body position is invented.
-- **Second hand:** the offset from the primary wrist and a presence flag. The
-  second hand's own landmark shape is **not** part of the model.
+- **Second hand:** in a v2 single-hand window, only the offset from the primary
+  wrist and a presence flag. In a v3 two-hand window, both hands' full 76-value
+  frames plus relative distance, orientation, presence and interaction.
 - **Time:** frames are linearly resampled to 12 slots, so the same sign at two
   speeds produces comparable vectors. Direction and ordering are preserved.
 
@@ -82,8 +86,9 @@ your own recordings on your own device.
   browser checks use a synthetic camera that contains no hand, so the honest
   "No hand" state is what was exercised.
 - No ISL vocabulary, no fingerspelling dataset and no translation model.
-- Two-handed signs are represented only by the second hand's offset and
-  presence, not its full shape.
+- A v2 single-hand window still represents the other hand only by offset and
+  presence. The v3 two-hand model includes both hands but is only as good as
+  the paired recordings used to train it.
 - A single global unknown threshold; no per-label distance calibration.
 - Older single-frame samples are ignored by a window model rather than
   migrated. They remain in local storage until deleted.

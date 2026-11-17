@@ -815,6 +815,7 @@ function RecognitionSection() {
             />
           }
         />
+        <p className={styles.note}>{t('settings.recNote')}</p>
       </Panel>
       <Panel title={t('speech.title')}>
         <Field
@@ -855,9 +856,6 @@ function RecognitionSection() {
           }
         />
         <p className={styles.note}>{t('speech.autoNote')}</p>
-      </Panel>
-      <Panel title={t('settings.recognitionTitle')}>
-        <p className={styles.note}>{t('settings.recNote')}</p>
       </Panel>
     </>
   )
@@ -1142,7 +1140,7 @@ function AboutSection() {
   return (
     <Panel title={t('settings.navAbout')} flush>
       <div className={styles.rows}>
-        <Field label={t('settings.aboutVersion')} control={<span className="mono">3.0.0</span>} />
+        <Field label={t('settings.aboutVersion')} control={<span className="mono">4.0.0</span>} />
         <Field label={t('settings.aboutRuntime')} control={<span>{runtime}</span>} />
         <Field
           label={t('settings.aboutEngine')}

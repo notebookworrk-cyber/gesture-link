@@ -38,13 +38,18 @@ const context = await browser.newContext({
 })
 const page = await context.newPage()
 page.on('console', (message) => {
-  if (message.type() === 'error') consoleErrors.push(message.text())
+  const text = message.text().trimStart()
+  // MediaPipe logs TFLite info lines as errors; they are not app failures.
+  if (message.type() === 'error' && !text.startsWith('INFO:')) {
+    consoleErrors.push(text)
+  }
 })
 page.on('pageerror', (error) => consoleErrors.push(`pageerror: ${error.message}`))
 page.on('requestfailed', (request) => {
-  // MediaPipe probing optional wasm variants can abort harmlessly; only real
-  // app assets matter here.
-  if (/\.(js|wasm|task)(\?|$)/.test(request.url())) {
+  // A CDN model fetch can be aborted by the load timeout or by navigation;
+  // the bundled local copy is the automatic fallback, so this is not a failure.
+  const aborted = request.failure()?.errorText === 'net::ERR_ABORTED'
+  if (!aborted && /\.(js|wasm|task)(\?|$)/.test(request.url())) {
     consoleErrors.push(`request failed: ${request.url()} (${request.failure()?.errorText})`)
   }
 })

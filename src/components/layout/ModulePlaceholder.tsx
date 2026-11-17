@@ -35,7 +35,7 @@ export function ModulePlaceholder({
             <DetailList
               items={[
                 { label: t('status.label'), value: t(statusKey(state)) },
-                { label: t('settings.aboutBuild'), value: '3.0.0' },
+                { label: t('settings.aboutBuild'), value: '4.0.0' },
               ]}
             />
           </Panel>

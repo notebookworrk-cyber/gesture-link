@@ -185,6 +185,28 @@ five links, the status strip and no mobile overflow at 1440 and 390 px.
   recorded in `FEATURE_STATUS.md` → “User verification needed”. No fps,
   inference or accuracy figure from real hardware is published here.
 
+## GestureLink 4.0 — recognition and stability engine (Done; hardware pending)
+
+- Recognition is a stateful event pipeline: `TwoHandTracker`,
+  `PredictionStabilizer`, `SignSegmenter`, `DuplicateSuppressor` and
+  `SignEventManager`. A held sign or small movement cannot create a second
+  word; only a neutral release or a verified different sign re-arms.
+- Two-hand reading is independent per hand with explicit number operations, and
+  two-hand signs are trained as combined model-v3 sequences that refuse a
+  missing hand. Training Studio can capture paired takes.
+- Speech is event-only: `SpeechQueue`, `SpeechDeduplicator`,
+  `SentenceCommitManager`, `SpeechEventManager` and `SpeechEngine`, with a
+  preview gate before auto speech, cancellation, pause/resume/stop/replay.
+- Tracking indicators, slot-coloured overlays, a recognition debug panel and a
+  Recognition settings section with presets were added.
+- Hand model loading now times out after 8 s so the bundled copy is used when
+  the CDN stalls; browser harnesses ignore the resulting aborted requests.
+- Verification: `npm run verify` passed (250 tests, 1,223 kB / 376 kB gzip);
+  UI, vision, whiteboard and camera Playwright checks passed; a separate 4.0 UI
+  smoke check passed. See `RECOGNITION_UPGRADE.md`, `TWO_HAND_TEST_REPORT.md`
+  and `SPEAKER_TEST_REPORT.md`. Real-hand accuracy and real-voice playback
+  remain explicitly pending.
+
 ## Explicitly out of scope
 
 - Bundling or claiming an ISL model, dataset or accuracy figure.
