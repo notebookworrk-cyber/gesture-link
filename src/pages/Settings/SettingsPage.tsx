@@ -9,6 +9,7 @@ import {
   Info,
   Languages,
   Palette,
+  ScanLine,
   ShieldCheck,
 } from 'lucide-react'
 import { PageHeader, pageStyles } from '@/components/layout/PageHeader'
@@ -68,6 +69,7 @@ type SectionId =
   | 'appearance'
   | 'camera'
   | 'tracking'
+  | 'recognition'
   | 'performance'
   | 'language'
   | 'accessibility'
@@ -78,6 +80,7 @@ const SECTIONS: Array<{ id: SectionId; labelKey: MessageKey; icon: typeof Palett
   { id: 'appearance', labelKey: 'settings.navAppearance', icon: Palette },
   { id: 'camera', labelKey: 'settings.navCamera', icon: Camera },
   { id: 'tracking', labelKey: 'settings.navTracking', icon: Hand },
+  { id: 'recognition', labelKey: 'settings.navRecognition', icon: ScanLine },
   { id: 'performance', labelKey: 'settings.navPerformance', icon: Gauge },
   { id: 'language', labelKey: 'settings.navLanguage', icon: Languages },
   { id: 'accessibility', labelKey: 'settings.navAccessibility', icon: Accessibility },
@@ -126,6 +129,7 @@ export function SettingsPage() {
             {section === 'appearance' ? <AppearanceSection /> : null}
             {section === 'camera' ? <CameraSection /> : null}
             {section === 'tracking' ? <TrackingSection /> : null}
+            {section === 'recognition' ? <RecognitionSection /> : null}
             {section === 'performance' ? <PerformanceSection /> : null}
             {section === 'language' ? <LanguageSection /> : null}
             {section === 'accessibility' ? <AccessibilitySection /> : null}
@@ -690,6 +694,173 @@ function gestureLabelKey(gesture: StaticGestureId): MessageKey {
     default:
       return 'gesture.none'
   }
+}
+
+function RecognitionSection() {
+  const { t, formatNumber } = useI18n()
+  const recognition = useSettings((state) => state.recognition)
+  const speech = useSettings((state) => state.speech)
+  const setRecognition = useSettings((state) => state.setRecognition)
+  const setRecognitionPreset = useSettings((state) => state.setRecognitionPreset)
+  const setSpeech = useSettings((state) => state.setSpeech)
+
+  return (
+    <>
+      <Panel title={t('settings.recognitionTitle')}>
+        <p className={styles.note}>{t('settings.recognitionLead')}</p>
+        <Field
+          label={t('settings.recPreset')}
+          control={
+            <Segmented
+              ariaLabel={t('settings.recPreset')}
+              value={recognition.preset}
+              onChange={(value) => setRecognitionPreset(value as typeof recognition.preset)}
+              options={[
+                { value: 'beginner', label: t('settings.presetBeginner') },
+                { value: 'balanced', label: t('settings.presetBalanced') },
+                { value: 'responsive', label: t('settings.presetResponsive') },
+              ]}
+            />
+          }
+        />
+        <Slider
+          label={t('settings.recMinConfidence')}
+          value={recognition.minConfidence}
+          min={0.2}
+          max={0.9}
+          step={0.05}
+          format={(value) => formatNumber(Math.round(value * 100)) + '%'}
+          onChange={(minConfidence) => setRecognition({ minConfidence })}
+        />
+        <Slider
+          label={t('settings.recStability')}
+          value={recognition.stabilityMs}
+          min={100}
+          max={700}
+          step={20}
+          format={(value) => `${formatNumber(value)} ms`}
+          onChange={(stabilityMs) => setRecognition({ stabilityMs })}
+        />
+        <Slider
+          label={t('settings.recMinDuration')}
+          value={recognition.minDurationMs}
+          min={120}
+          max={900}
+          step={20}
+          format={(value) => `${formatNumber(value)} ms`}
+          onChange={(minDurationMs) => setRecognition({ minDurationMs })}
+        />
+        <Slider
+          label={t('settings.recRelease')}
+          value={recognition.releaseMs}
+          min={80}
+          max={700}
+          step={20}
+          format={(value) => `${formatNumber(value)} ms`}
+          onChange={(releaseMs) => setRecognition({ releaseMs })}
+        />
+        <Slider
+          label={t('settings.recHandLoss')}
+          value={recognition.handLossMs}
+          min={80}
+          max={800}
+          step={20}
+          format={(value) => `${formatNumber(value)} ms`}
+          onChange={(handLossMs) => setRecognition({ handLossMs })}
+        />
+        <Slider
+          label={t('settings.recJitter')}
+          value={recognition.jitterDistance}
+          min={0.01}
+          max={0.12}
+          step={0.005}
+          format={(value) => value.toFixed(3)}
+          onChange={(jitterDistance) => setRecognition({ jitterDistance })}
+        />
+        <Field
+          label={t('settings.recDuplicate')}
+          control={
+            <Toggle
+              checked={recognition.duplicateSuppression}
+              onChange={(duplicateSuppression) => setRecognition({ duplicateSuppression })}
+              label={t('settings.recDuplicate')}
+            />
+          }
+        />
+        <Field
+          label={t('settings.recTwoHand')}
+          control={
+            <Toggle
+              checked={recognition.twoHandMode}
+              onChange={(twoHandMode) => setRecognition({ twoHandMode })}
+              label={t('settings.recTwoHand')}
+            />
+          }
+        />
+        <Field
+          label={t('settings.recNumberMode')}
+          control={
+            <SelectControl
+              ariaLabel={t('settings.recNumberMode')}
+              value={recognition.numberOperation}
+              onChange={(value) =>
+                setRecognition({ numberOperation: value as typeof recognition.numberOperation })
+              }
+              options={[
+                { value: 'independent', label: t('reader.opIndependent') },
+                { value: 'addition', label: t('reader.opAddition') },
+                { value: 'subtraction', label: t('reader.opSubtraction') },
+                { value: 'concatenation', label: t('reader.opConcatenation') },
+              ]}
+            />
+          }
+        />
+      </Panel>
+      <Panel title={t('speech.title')}>
+        <Field
+          label={t('speech.mode')}
+          control={
+            <SelectControl
+              ariaLabel={t('speech.mode')}
+              value={speech.mode}
+              onChange={(value) => setSpeech({ mode: value as typeof speech.mode })}
+              options={[
+                { value: 'manual', label: t('speech.modeManual') },
+                { value: 'word', label: t('speech.modeWord') },
+                { value: 'sentence', label: t('speech.modeSentence') },
+                { value: 'auto', label: t('speech.modeAuto') },
+              ]}
+            />
+          }
+        />
+        <Field
+          label={t('speech.preview')}
+          control={
+            <Toggle
+              checked={speech.preview}
+              onChange={(preview) => setSpeech({ preview })}
+              label={t('speech.preview')}
+            />
+          }
+        />
+        <Field
+          label={t('speech.auto')}
+          control={
+            <Toggle
+              checked={speech.autoEnabled && speech.preview}
+              disabled={!speech.preview}
+              onChange={(autoEnabled) => setSpeech({ autoEnabled })}
+              label={t('speech.auto')}
+            />
+          }
+        />
+        <p className={styles.note}>{t('speech.autoNote')}</p>
+      </Panel>
+      <Panel title={t('settings.recognitionTitle')}>
+        <p className={styles.note}>{t('settings.recNote')}</p>
+      </Panel>
+    </>
+  )
 }
 
 function PerformanceSection() {

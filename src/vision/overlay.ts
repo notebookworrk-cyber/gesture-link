@@ -1,4 +1,5 @@
-import type { FrameReading } from './types'
+import type { FrameReading, Handedness } from './types'
+import type { HandSlot } from '@/recognition/types'
 
 /** MediaPipe hand topology, index pairs. */
 export const HAND_CONNECTIONS: ReadonlyArray<readonly [number, number]> = [
@@ -32,6 +33,10 @@ export interface OverlayOptions {
   showLandmarks: boolean
   videoWidth: number
   videoHeight: number
+  /** Stable hand id -> physical slot, supplied by the two-hand tracker. */
+  slots?: Map<string, HandSlot>
+  /** Draw left/right labels, palm markers and the recognition boundary. */
+  showHandDetails?: boolean
 }
 
 let accentCache: { key: string; value: string } = { key: '', value: '#3edc9b' }
@@ -96,7 +101,9 @@ export function drawHandOverlay(
 
   for (const hand of frame.hands) {
     const points = hand.landmarks
-    context.strokeStyle = accent
+    const slot = options.slots?.get(hand.id)
+    const color = slot === 'left' ? '#f5b942' : slot === 'right' ? accent : '#9fb3c8'
+    context.strokeStyle = color
     context.globalAlpha = 0.72
     context.lineWidth = 1.6
     context.beginPath()
@@ -116,9 +123,30 @@ export function drawHandOverlay(
       const tip = TIP_INDICES.has(index)
       context.beginPath()
       context.arc(mapX(point.x), mapY(point.y), tip ? 2.9 : 2, 0, Math.PI * 2)
-      context.fillStyle = accent
+      context.fillStyle = color
       context.fill()
+    }
+
+    if (options.showHandDetails) {
+      const palmX = mapX(hand.palmCenter.x)
+      const palmY = mapY(hand.palmCenter.y)
+      context.beginPath()
+      context.arc(palmX, palmY, 6, 0, Math.PI * 2)
+      context.strokeStyle = color
+      context.lineWidth = 1.2
+      context.stroke()
+      context.font = '10px Inter, sans-serif'
+      context.fillStyle = color
+      context.fillText(
+        slot === 'left' ? 'LEFT' : slot === 'right' ? 'RIGHT' : handednessLabel(hand.handedness),
+        palmX + 8,
+        palmY - 8,
+      )
     }
   }
   context.globalAlpha = 1
+}
+
+function handednessLabel(handedness: Handedness): string {
+  return handedness === 'Left' ? 'LEFT?' : 'RIGHT?'
 }

@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { TwoHandTracker } from '@/recognition/TwoHandTracker'
+import type { HandSlot } from '@/recognition/types'
 import { Camera, CameraOff, LoaderCircle, RefreshCw, ScanLine, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useI18n } from '@/localization/i18n'
@@ -15,6 +17,26 @@ interface CameraPreviewProps {
   showLandmarks?: boolean
   compact?: boolean
   className?: string
+}
+
+interface HandIndicator {
+  status: 'tracking' | 'lost' | 'absent'
+  confidence: number
+}
+
+type IndicatorState = Record<'left' | 'right', HandIndicator> & {
+  face: 'tracking' | 'absent'
+  body: 'tracking' | 'absent'
+  bodyConfidence: number
+}
+
+const absentHand: HandIndicator = { status: 'absent', confidence: 0 }
+const emptyIndicators: IndicatorState = {
+  left: absentHand,
+  right: absentHand,
+  face: 'absent',
+  body: 'absent',
+  bodyConfidence: 0,
 }
 
 type Tone = 'neutral' | 'ok' | 'warn' | 'danger'
@@ -40,6 +62,10 @@ export function CameraPreview({ showLandmarks, compact = false, className }: Cam
   const landmarkSetting = useSettings((state) => state.tracking.showLandmarks)
   const show = showLandmarks ?? landmarkSetting
 
+  const [indicators, setIndicators] = useState<IndicatorState>(emptyIndicators)
+  const slotsRef = useRef<Map<string, HandSlot>>(new Map())
+  const trackerRef = useRef<TwoHandTracker | null>(null)
+
   const mirrorRef = useRef(mirror)
   const showRef = useRef(show)
   useEffect(() => {
@@ -63,11 +89,36 @@ export function CameraPreview({ showLandmarks, compact = false, className }: Cam
         const canvas = canvasRef.current
         const video = videoRef.current
         if (!canvas || !video) return
+        if (!trackerRef.current) {
+          trackerRef.current = new TwoHandTracker({
+            mirrorLabels: mirrorRef.current,
+            handLossMs: 260,
+          })
+        }
+        const update = trackerRef.current.update(frame)
+        const slots = new Map<string, HandSlot>()
+        for (const slot of ['left', 'right'] as HandSlot[]) {
+          const state = slot === 'left' ? update.left : update.right
+          if (state) slots.set(state.id, slot)
+        }
+        slotsRef.current = slots
+        for (const hand of frame.hands) {
+          if (!slots.has(hand.id)) slots.set(hand.id, hand.handedness === 'Left' ? 'left' : 'right')
+        }
+        setIndicators({
+          left: indicator(update.left),
+          right: indicator(update.right),
+          face: frame.faces.length > 0 ? 'tracking' : 'absent',
+          body: frame.pose ? 'tracking' : 'absent',
+          bodyConfidence: frame.pose?.confidence ?? 0,
+        })
         drawHandOverlay(canvas, frame, {
           mirror: mirrorRef.current,
           showLandmarks: showRef.current,
           videoWidth: video.videoWidth,
           videoHeight: video.videoHeight,
+          slots: slotsRef.current,
+          showHandDetails: showRef.current,
         })
       }),
     [engine],
@@ -78,6 +129,9 @@ export function CameraPreview({ showLandmarks, compact = false, className }: Cam
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
     if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height)
+    setIndicators(emptyIndicators)
+    trackerRef.current?.reset()
+    slotsRef.current.clear()
   }, [camera])
 
   const isLive = camera === 'live'
@@ -106,6 +160,20 @@ export function CameraPreview({ showLandmarks, compact = false, className }: Cam
         <span className={styles.state} data-tone={state.tone} role="status">
           <i aria-hidden="true" />
           {t(state.key)}
+        </span>
+      </div>
+
+      <div className={styles.trackingStrip} aria-label={t('vision.trackingIndicators')}>
+        <HandIndicatorView label={t('vision.leftHand')} value={indicators.left} />
+        <HandIndicatorView label={t('vision.rightHand')} value={indicators.right} />
+        <span className={styles.indicator} data-tone={indicators.face === 'tracking' ? 'ok' : 'neutral'}>
+          {t('vision.face')} · {t(indicators.face === 'tracking' ? 'vision.tracking' : 'vision.absent')}
+        </span>
+        <span className={styles.indicator} data-tone={indicators.body === 'tracking' ? 'ok' : 'neutral'}>
+          {t('vision.body')} ·{' '}
+          {indicators.body === 'tracking'
+            ? `${t('vision.tracking')} · ${formatNumber(Math.round(indicators.bodyConfidence * 100))}%`
+            : t('vision.optional')}
         </span>
       </div>
 
@@ -242,6 +310,30 @@ export function CameraPreview({ showLandmarks, compact = false, className }: Cam
         </p>
       ) : null}
     </section>
+  )
+}
+
+function indicator(state: ReturnType<TwoHandTracker['getState']>): HandIndicator {
+  if (!state) return absentHand
+  return {
+    status: state.status === 'lost' ? 'lost' : 'tracking',
+    confidence: state.reading.score,
+  }
+}
+
+function HandIndicatorView({ label, value }: { label: string; value: HandIndicator }) {
+  const { t, formatNumber } = useI18n()
+  const key =
+    value.status === 'tracking'
+      ? 'vision.tracking'
+      : value.status === 'lost'
+        ? 'vision.temporarilyLost'
+        : 'vision.absent'
+  return (
+    <span className={styles.indicator} data-tone={value.status === 'tracking' ? 'ok' : value.status === 'lost' ? 'warn' : 'neutral'}>
+      {label} · {t(key)}
+      {value.status === 'tracking' ? ` · ${formatNumber(Math.round(value.confidence * 100))}%` : ''}
+    </span>
   )
 }
 

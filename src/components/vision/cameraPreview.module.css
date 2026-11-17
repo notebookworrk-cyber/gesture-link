@@ -64,6 +64,33 @@
   background: var(--danger);
 }
 
+.trackingStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--stroke-1);
+  background: var(--surface-1);
+  color: var(--text-3);
+  font-size: var(--fs-2xs);
+}
+
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.indicator[data-tone='ok'] {
+  color: var(--accent);
+}
+
+.indicator[data-tone='warn'] {
+  color: var(--warning);
+}
+
 .stage {
   position: relative;
   width: 100%;
