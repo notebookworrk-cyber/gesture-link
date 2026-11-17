@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   Camera,
+  Crosshair,
   GraduationCap,
   Hand,
   House,
@@ -58,6 +59,12 @@ export const navigation: NavGroup[] = [
   {
     labelKey: 'nav.systemGroup',
     items: [
+      {
+        to: '/calibration',
+        labelKey: 'nav.calibration',
+        titleKey: 'page.calibration.title',
+        icon: Crosshair,
+      },
       {
         to: '/settings',
         labelKey: 'nav.settings',

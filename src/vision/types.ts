@@ -26,11 +26,31 @@ export interface FingerStates {
   extendedCount: number
 }
 
+/**
+ * A hand placed in the signer's own frame of reference: origin at the shoulder
+ * midpoint, unit = shoulder width. This is what makes features survive moving
+ * closer to the camera or turning sideways.
+ */
+export interface CanonicalHand {
+  points: Landmark[]
+  origin: { x: number; y: number }
+  unit: number
+  /** Which reference produced the frame. */
+  source: 'pose' | 'hand'
+}
+
 export interface HandReading {
   /** Normalised image-space landmarks (21 points). */
   landmarks: Landmark[]
   /** Metric landmarks from MediaPipe, used for ratios that need depth. */
   worldLandmarks: Landmark[]
+  /**
+   * Stable identity across frames. Handedness alone is not enough: MediaPipe
+   * swaps its label when the hands cross or the palm turns over.
+   */
+  id: string
+  /** Landmarks in shoulder space, null until a pose frame exists. */
+  canonical: CanonicalHand | null
   handedness: Handedness
   score: number
   fingers: FingerStates
@@ -54,9 +74,35 @@ export interface FrameReading {
   hands: HandReading[]
   /** Detected faces, empty when face tracking is off or nothing is in view. */
   faces: FaceReading[]
+  /** Upper-body pose, null until the pose pass has run. */
+  pose: PoseReading | null
   inferenceMs: number
   /** Timestamp of the source video frame, when the browser exposes it. */
   sourceTime: number
+}
+
+/** MediaPipe pose landmark indices we care about. */
+export const POSE_SHOULDER_LEFT = 11
+export const POSE_SHOULDER_RIGHT = 12
+export const POSE_ELBOW_LEFT = 13
+export const POSE_ELBOW_RIGHT = 14
+export const POSE_WRIST_LEFT = 15
+export const POSE_WRIST_RIGHT = 16
+export const POSE_HIP_LEFT = 23
+export const POSE_HIP_RIGHT = 24
+export const POSE_NOSE = 0
+
+export interface PoseReading {
+  /** Normalised image-space landmarks (33 points). */
+  landmarks: Landmark[]
+  /** Metric landmarks from MediaPipe. */
+  worldLandmarks: Landmark[]
+  /** Highest landmark visibility in the upper body, 0…1. */
+  confidence: number
+  /** Shoulder midpoint in image space. */
+  shoulderCenter: { x: number; y: number }
+  /** Distance between the shoulders in image space; 0 when not visible. */
+  shoulderWidth: number
 }
 
 export interface FaceReading {
@@ -66,6 +112,8 @@ export interface FaceReading {
   box: { x: number; y: number; width: number; height: number }
   /** Rotation of the eye line in radians; 0 when the head is level. */
   roll: number
+  /** MediaPipe blendshape scores by category name, when requested. */
+  blendshapes?: Record<string, number>
 }
 
 export interface VisionConfig {
@@ -88,6 +136,8 @@ export interface VisionConfig {
     cooldownMs: number
     lossToleranceMs: number
     dominantHand: 'left' | 'right' | 'any'
+    pose: 'off' | 'lite'
+    poseRateHz: number
   }
   performance: {
     quality: 'low' | 'balanced' | 'high'

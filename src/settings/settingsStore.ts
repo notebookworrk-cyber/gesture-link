@@ -58,6 +58,10 @@ export interface TrackingSettings {
   lossToleranceMs: number
   dominantHand: Handedness
   showLandmarks: boolean
+  /** Upper-body pose pass: needed for shoulder-normalised hand features. */
+  pose: 'off' | 'lite'
+  /** Target pose rate; the hand pass always runs at video rate. */
+  poseRateHz: number
 }
 
 export interface PerformanceSettings {
@@ -158,6 +162,8 @@ export const defaultTracking: TrackingSettings = {
   lossToleranceMs: 180,
   dominantHand: 'any',
   showLandmarks: true,
+  pose: 'lite',
+  poseRateHz: 8,
 }
 
 export const defaultPerformance: PerformanceSettings = {

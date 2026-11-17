@@ -35,6 +35,18 @@ export function faceModelCandidates(): string[] {
   ]
 }
 
+/**
+ * Pose has no bundled copy: the lite bundle is 5.5 MB and the only consumer is
+ * the shoulder frame, so it is fetched from the same model store on demand and
+ * degrades to hand-relative features when the fetch fails.
+ */
+export function poseModelCandidates(): string[] {
+  return [
+    `${MODEL_CDN_BASE}/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task`,
+    localModelUrl('pose_landmarker_lite.task'),
+  ]
+}
+
 /** First candidate, for callers that only need one URL. */
 export function handModelUrl(): string {
   return handModelCandidates()[0]!

@@ -27,6 +27,8 @@ export const defaultVisionConfig: VisionConfig = {
     cooldownMs: defaultTracking.cooldownMs,
     lossToleranceMs: defaultTracking.lossToleranceMs,
     dominantHand: defaultTracking.dominantHand,
+    pose: defaultTracking.pose,
+    poseRateHz: defaultTracking.poseRateHz,
   },
   performance: {
     quality: defaultPerformance.quality,
@@ -56,6 +58,8 @@ export function visionConfigFromSettings(settings: Source): VisionConfig {
       cooldownMs: settings.tracking.cooldownMs,
       lossToleranceMs: settings.tracking.lossToleranceMs,
       dominantHand: settings.tracking.dominantHand,
+      pose: settings.tracking.pose,
+      poseRateHz: settings.tracking.poseRateHz,
     },
     performance: {
       quality: settings.performance.quality,

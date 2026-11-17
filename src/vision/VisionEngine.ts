@@ -1,6 +1,13 @@
 import { CameraManager, CameraError } from './CameraManager'
 import { HandTracker } from './handTracker'
 import { FaceTracker, FACE_FRAME_STRIDE } from './faceTracker'
+import { PoseTracker } from './PoseTracker'
+import { FrameScheduler, videoFrameSource } from './FrameScheduler'
+import { HandIdentityTracker } from './HandIdentityTracker'
+import { TemporalBuffer } from './TemporalBuffer'
+import { TrackingDiagnostics } from './TrackingDiagnostics'
+import { normalizeHand, shoulderFrame } from './LandmarkNormalizer'
+import { loadProfile, type CalibrationProfile } from './calibration'
 import { LandmarkSmoother } from './oneEuro'
 import { GestureStateMachine, type GestureUpdate } from './gestureStateMachine'
 import {
@@ -12,12 +19,21 @@ import {
   distance2d,
   palmSpan,
 } from './geometry'
-import { PROCESSING_WIDTH, type FaceReading, type FrameReading, type HandReading, type Handedness, type Landmark, type StaticGestureId, type VisionConfig } from './types'
+import { PROCESSING_WIDTH, type FaceReading, type FrameReading, type HandReading, type Handedness, type Landmark, type PoseReading, type StaticGestureId, type VisionConfig } from './types'
 import { defaultVisionConfig, cameraNeedsRestart, trackerNeedsReload } from './config'
 import { useVisionStatus, type VisionErrorCode } from './visionStatus'
 
 type FrameListener = (frame: FrameReading) => void
 type GestureListener = (event: { gesture: StaticGestureId; handedness: Handedness; at: number }) => void
+
+/** One entry of the rolling per-hand history used by sign recognition. */
+export interface HandHistorySample {
+  timestamp: number
+  id: string
+  landmarks: Landmark[]
+  canonical: HandReading['canonical']
+  palmCenter: { x: number; y: number }
+}
 
 const STATUS_INTERVAL_MS = 250
 const LOW_POWER_INTERVAL_MS = 1000 / 15
@@ -27,8 +43,20 @@ const ADAPTIVE_WARMUP_FRAMES = 30
 const RELEASE_GRACE_MS = 1200
 const RECONFIGURE_DEBOUNCE_MS = 300
 const ALL_PROCESSING_WIDTHS = [640, 480, 320]
+/** 2 s at 30 Hz; enough for a windowed sign, small enough to stay cheap. */
+const HISTORY_CAPACITY = 64
 
 const PALM_POINTS = [WRIST, 5, 9, 13, 17]
+
+function palmCenterOf(landmarks: Landmark[]): { x: number; y: number } {
+  let x = 0
+  let y = 0
+  for (const index of PALM_POINTS) {
+    x += landmarks[index]?.x ?? 0
+    y += landmarks[index]?.y ?? 0
+  }
+  return { x: x / PALM_POINTS.length, y: y / PALM_POINTS.length }
+}
 
 /**
  * The application's single vision session.
@@ -42,8 +70,16 @@ export class VisionEngine {
   private readonly camera = new CameraManager()
   private readonly tracker = new HandTracker()
   private readonly faces = new FaceTracker()
+  private readonly pose = new PoseTracker()
+  private readonly identity = new HandIdentityTracker()
+  private readonly diagnostics = new TrackingDiagnostics()
+  private readonly history = new Map<string, TemporalBuffer<HandHistorySample>>()
   private faceWanted = false
   private faceReadings: FaceReading[] = []
+  private poseWanted = true
+  private poseReading: PoseReading | null = null
+  private lastPoseAt = 0
+  private calibration: CalibrationProfile | null = null
   private frameIndex = 0
   private config: VisionConfig = defaultVisionConfig
 
@@ -51,15 +87,12 @@ export class VisionEngine {
   private context: CanvasRenderingContext2D | null = null
 
   private running = false
-  private looping = false
   private starting: Promise<void> | null = null
   private generation = 0
-  private rafId = 0
-  private videoCallbackId = 0
-  private useVideoCallback = false
+  private scheduler: FrameScheduler | null = null
+  private stopLongTasks: (() => void) | null = null
   private lastVideoTime = -1
   private lastTimestamp = 0
-  private lastProcessedAt = 0
 
   private frameCount = 0
   private windowStart = 0
@@ -72,9 +105,9 @@ export class VisionEngine {
   private adaptiveWidth = PROCESSING_WIDTH[defaultVisionConfig.performance.quality]
   private adaptiveCooldownUntil = 0
 
-  private readonly smoothers = new Map<Handedness, LandmarkSmoother>()
+  private readonly smoothers = new Map<string, LandmarkSmoother>()
   private readonly machines = new Map<string, GestureStateMachine>()
-  private readonly lastPalm = new Map<Handedness, { x: number; y: number; at: number }>()
+  private readonly lastPalm = new Map<string, { x: number; y: number; at: number }>()
 
   private readonly frameListeners = new Set<FrameListener>()
   private readonly gestureListeners = new Set<GestureListener>()
@@ -93,7 +126,6 @@ export class VisionEngine {
       useVisionStatus.getState().setStatus({ camera: 'paused', tracking: 'idle' })
     } else {
       this.lastVideoTime = -1
-      this.lastProcessedAt = 0
       useVisionStatus.getState().setStatus({ camera: 'live' })
       if (this.tracker.loaded) this.startLoop()
     }
@@ -138,7 +170,11 @@ export class VisionEngine {
     this.stopLoop()
     this.tracker.close()
     this.faces.close()
+    this.pose.close()
+    this.stopLongTasks?.()
+    this.stopLongTasks = null
     this.faceReadings = []
+    this.poseReading = null
     this.camera.stop()
     // Drop the inference buffer so the next session recreates it and publishes
     // its real width again; `stop` resets the reported width to zero.
@@ -163,6 +199,11 @@ export class VisionEngine {
       faceTracking: this.faceWanted ? 'idle' : 'off',
       faceDelegate: null,
       faceMs: 0,
+      poseTracking: this.poseWanted ? 'idle' : 'off',
+      poseDelegate: null,
+      poseMs: 0,
+      shoulderFrameReady: false,
+      diagnostics: this.diagnostics.snapshot(),
       error: null,
     })
   }
@@ -181,6 +222,27 @@ export class VisionEngine {
       this.adaptiveWidth = PROCESSING_WIDTH[next.performance.quality]
     }
     for (const machine of this.machines.values()) machine.configure(this.machineConfig())
+
+    // Low-power mode changes the scheduler's rate limit, so the loop is rebuilt.
+    if (this.running && previous.performance.lowPower !== next.performance.lowPower) {
+      this.stopLoop()
+      this.startLoop()
+    }
+    if (previous.tracking.pose !== next.tracking.pose) {
+      this.poseWanted = next.tracking.pose !== 'off'
+      if (!this.poseWanted) {
+        this.pose.close()
+        this.poseReading = null
+        useVisionStatus.getState().setStatus({
+          poseTracking: 'off',
+          poseDelegate: null,
+          poseMs: 0,
+          shoulderFrameReady: false,
+        })
+      } else if (this.running) {
+        void this.reloadPose()
+      }
+    }
 
     if (!this.running) return
 
@@ -235,6 +297,67 @@ export class VisionEngine {
       this.faceWanted = false
       useVisionStatus.getState().setStatus({ faceTracking: 'error', faces: 0 })
     }
+  }
+
+  /**
+   * Turns the pose pass on or off. Pose only feeds the shoulder frame, so a
+   * failed load degrades to hand-relative normalisation instead of blocking the
+   * session, and the status says so.
+   */
+  async setPoseTracking(enabled: boolean): Promise<void> {
+    this.poseWanted = enabled
+    if (!enabled) {
+      this.pose.close()
+      this.poseReading = null
+      useVisionStatus.getState().setStatus({
+        poseTracking: 'off',
+        poseDelegate: null,
+        poseMs: 0,
+        shoulderFrameReady: false,
+      })
+      return
+    }
+    await this.reloadPose()
+  }
+
+  private async reloadPose(): Promise<void> {
+    if (this.pose.loaded) {
+      useVisionStatus.getState().setStatus({ poseTracking: 'running' })
+      return
+    }
+    useVisionStatus.getState().setStatus({ poseTracking: 'loading' })
+    const started = performance.now()
+    try {
+      const delegate = await this.pose.load({ delegate: this.trackerDelegate() })
+      if (!this.poseWanted) {
+        this.pose.close()
+        useVisionStatus.getState().setStatus({ poseTracking: 'off', poseDelegate: null })
+        return
+      }
+      this.diagnostics.recordModelLoad(performance.now() - started)
+      useVisionStatus.getState().setStatus({
+        poseTracking: 'running',
+        poseDelegate: delegate === 'GPU' ? 'gpu' : 'cpu',
+      })
+    } catch {
+      // No pose model means no shoulder frame; hands still track.
+      this.poseWanted = false
+      useVisionStatus.getState().setStatus({ poseTracking: 'error', poseDelegate: null })
+    }
+  }
+
+  /** Reads the profile saved by the calibration screen. */
+  setCalibration(profile: CalibrationProfile | null): void {
+    this.calibration = profile
+  }
+
+  get calibrationProfile(): CalibrationProfile | null {
+    return this.calibration
+  }
+
+  /** Rolling landmark history for one stable hand id. */
+  historyFor(handId: string): HandHistorySample[] {
+    return this.history.get(handId)?.entries() ?? []
   }
 
   /**
@@ -299,6 +422,8 @@ export class VisionEngine {
   private async startInternal(): Promise<void> {
     const generation = ++this.generation
     this.resetTrackingState()
+    this.calibration = loadProfile()
+    this.stopLongTasks = this.diagnostics.observeLongTasks()
     useVisionStatus.getState().setStatus({
       camera: 'starting',
       tracking: 'idle',
@@ -314,6 +439,11 @@ export class VisionEngine {
       faceTracking: this.faceWanted ? 'idle' : 'off',
       faceDelegate: null,
       faceMs: 0,
+      poseTracking: this.poseWanted ? 'idle' : 'off',
+      poseDelegate: null,
+      poseMs: 0,
+      shoulderFrameReady: false,
+      diagnostics: this.diagnostics.snapshot(),
       error: null,
     })
 
@@ -338,10 +468,15 @@ export class VisionEngine {
       // A workspace may have asked for faces before the camera started, and the
       // tracker is closed on stop, so re-open the face model for this session.
       if (this.faceWanted && this.running) void this.reloadFaces()
+      if (this.poseWanted && this.config.tracking.pose !== 'off' && this.running) {
+        void this.reloadPose()
+      }
     } catch (error) {
       if (generation !== this.generation) return
       this.running = false
       this.tracker.close()
+      this.stopLongTasks?.()
+      this.stopLongTasks = null
       this.camera.stop()
       this.syncPreviews()
       const cameraError =
@@ -444,74 +579,58 @@ export class VisionEngine {
   // Capture loop
   // ---------------------------------------------------------------------
 
+  private get looping(): boolean {
+    return this.scheduler?.running ?? false
+  }
+
   private startLoop(): void {
     if (!this.running || this.looping) return
     const video = this.camera.videoElement
     if (!video) return
-    this.looping = true
-    this.useVideoCallback =
-      typeof (video as HTMLVideoElement & { requestVideoFrameCallback?: unknown })
-        .requestVideoFrameCallback === 'function'
     this.lastVideoTime = -1
-    this.lastProcessedAt = 0
     this.windowStart = performance.now()
     this.statusAt = this.windowStart
     this.loopStartedAt = this.windowStart
     this.lastHandSeenAt = 0
     this.frameCount = 0
     this.latestHandCount = 0
-    this.scheduleNextFrame()
+    this.scheduler = new FrameScheduler(videoFrameSource(video), {
+      // Low power is a rate limit, not a different pipeline.
+      minIntervalMs: this.config.performance.lowPower ? LOW_POWER_INTERVAL_MS : 0,
+      onFrame: (now) => this.processFrame(now),
+    })
+    this.scheduler.start()
   }
 
   private stopLoop(): void {
-    this.looping = false
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId)
-      this.rafId = 0
-    }
-    const video = this.camera.videoElement
-    if (this.videoCallbackId && video?.cancelVideoFrameCallback) {
-      video.cancelVideoFrameCallback(this.videoCallbackId)
-    }
-    this.videoCallbackId = 0
+    this.scheduler?.stop()
+    this.scheduler = null
   }
 
-  private scheduleNextFrame(): void {
+  private processFrame = (now: number): void => {
     if (!this.running || !this.looping) return
-    const video = this.camera.videoElement
-    if (!video) return
-    if (this.useVideoCallback && video.requestVideoFrameCallback) {
-      this.videoCallbackId = video.requestVideoFrameCallback(() => this.processFrame())
-    } else {
-      this.rafId = requestAnimationFrame(() => this.processFrame())
-    }
-  }
-
-  private processFrame = (): void => {
-    if (!this.running || !this.looping) return
-    this.scheduleNextFrame()
 
     const video = this.camera.videoElement
     if (!video || video.readyState < 2 || video.videoWidth === 0) return
     if (document.visibilityState === 'hidden') return
 
     const started = performance.now()
-    if (
-      this.config.performance.lowPower &&
-      started - this.lastProcessedAt < LOW_POWER_INTERVAL_MS
-    ) {
-      return
-    }
+    // The scheduler already enforces the rate limit; this guard only rejects a
+    // repeated video frame, which the callback can deliver after a seek.
     if (video.currentTime === this.lastVideoTime) return
     this.lastVideoTime = video.currentTime
-    this.lastProcessedAt = started
 
     const canvas = this.ensureCanvas(video)
     const context = this.context
     if (!canvas || !context) return
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    this.lastTimestamp = Math.max(started, this.lastTimestamp + 0.01)
+    this.lastTimestamp = Math.max(now, this.lastTimestamp + 0.01)
+
+    // Pose runs on its own cadence: hands need every frame, the shoulder frame
+    // does not. A pose pass never delays the hand pass for longer than one
+    // frame, because both read the same canvas.
+    const poseMs = this.posePass(canvas, this.lastTimestamp)
     const result = this.tracker.detect(canvas, this.lastTimestamp)
     this.frameCount += 1
     this.framesThisRun += 1
@@ -522,33 +641,51 @@ export class VisionEngine {
     if (this.faceWanted && this.faces.loaded && this.frameIndex % FACE_FRAME_STRIDE === 0) {
       const faceStarted = performance.now()
       this.faceReadings = this.faces.detect(canvas, this.lastTimestamp)
+      const faceMs = performance.now() - faceStarted
+      this.diagnostics.recordFace(faceMs)
       useVisionStatus.getState().setStatus({
         faces: this.faceReadings.length,
-        faceMs: performance.now() - faceStarted,
+        faceMs: Math.round(faceMs * 10) / 10,
       })
     }
     const faces = this.faceReadings
 
     if (result) {
       const handCount = Math.min(result.landmarks.length, this.config.tracking.maxHands)
-      const now = started
+      const ids = this.identity.assign(
+        Array.from({ length: handCount }, (_, index) => {
+          const raw = result.landmarks[index] ?? []
+          return {
+            handedness: (result.handedness[index]?.[0]?.categoryName === 'Left'
+              ? 'Left'
+              : 'Right') as Handedness,
+            center: palmCenterOf(raw),
+            score: result.handedness[index]?.[0]?.score ?? 0,
+          }
+        }),
+        started,
+      )
+
       const hands: HandReading[] = []
       for (let index = 0; index < handCount; index += 1) {
-        const reading = this.readHand(result, index, now)
+        const reading = this.readHand(result, index, started, ids[index]!)
         if (reading) hands.push(reading)
       }
       this.latestHandCount = hands.length
-      if (hands.length > 0) this.lastHandSeenAt = now
-      else this.expireGestures(now)
+      if (hands.length > 0) this.lastHandSeenAt = started
+      else this.expireGestures(started)
 
       const inferenceMs = performance.now() - started
       this.lastInference =
         this.lastInference > 0 ? this.lastInference * 0.8 + inferenceMs * 0.2 : inferenceMs
+      this.diagnostics.recordHand(inferenceMs)
+      if (poseMs > 0) this.diagnostics.recordPipeline(inferenceMs + poseMs)
 
       const frame: FrameReading = {
-        timestamp: now,
+        timestamp: started,
         hands,
         faces,
+        pose: this.poseReading,
         inferenceMs,
         sourceTime: video.currentTime,
       }
@@ -564,17 +701,38 @@ export class VisionEngine {
     this.reportStatus(performance.now())
   }
 
+  /** Runs the pose pass when its cadence is due; returns its cost in ms. */
+  private posePass(canvas: HTMLCanvasElement, timestamp: number): number {
+    if (!this.poseWanted || !this.pose.loaded) return 0
+    const interval = 1000 / Math.max(1, this.config.tracking.poseRateHz)
+    if (timestamp - this.lastPoseAt < interval) return 0
+    const started = performance.now()
+    const reading = this.pose.detect(canvas, timestamp)
+    const elapsed = performance.now() - started
+    this.lastPoseAt = timestamp
+    this.diagnostics.recordPose(elapsed)
+    if (reading) this.poseReading = reading
+    useVisionStatus.getState().setStatus({
+      poseMs: Math.round(elapsed * 10) / 10,
+      shoulderFrameReady: shoulderFrame(this.poseReading) !== null,
+    })
+    return elapsed
+  }
+
   private readHand(
     result: { landmarks: Array<Array<Landmark>>; worldLandmarks: Array<Array<Landmark>>; handedness: Array<Array<{ categoryName?: string; score?: number }>> },
     index: number,
     now: number,
+    id: string,
   ): HandReading | null {
     const raw = result.landmarks[index]
     if (!raw || raw.length < 21) return null
     const category = result.handedness[index]?.[0]
     const handedness: Handedness = category?.categoryName === 'Left' ? 'Left' : 'Right'
 
-    const smoothed = this.smootherFor(handedness).smooth(raw, now)
+    // Smoothers and gesture machines follow the stable id, not the handedness
+    // label, so a label flip mid-sign no longer resets them.
+    const smoothed = this.smootherFor(id).smooth(raw, now)
     const world = (result.worldLandmarks[index] ?? raw).map((point) => ({
       x: point.x,
       y: point.y,
@@ -595,15 +753,21 @@ export class VisionEngine {
     palmX /= PALM_POINTS.length
     palmY /= PALM_POINTS.length
 
-    const previous = this.lastPalm.get(handedness)
+    const previous = this.lastPalm.get(id)
     let speed = 0
     if (previous) {
       const dt = Math.max((now - previous.at) / 1000, 1 / 240)
       speed = distance2d({ x: palmX, y: palmY, z: 0 }, { x: previous.x, y: previous.y, z: 0 }) / dt
     }
-    this.lastPalm.set(handedness, { x: palmX, y: palmY, at: now })
+    this.lastPalm.set(id, { x: palmX, y: palmY, at: now })
 
-    const machine = this.machineFor(handedness)
+    const canonical = normalizeHand(
+      smoothed,
+      shoulderFrame(this.poseReading),
+      this.config.camera.mirror,
+    )
+
+    const machine = this.machineFor(id)
     const update: GestureUpdate = machine.update(gesture, now)
     if (update.fired) {
       for (const listener of this.gestureListeners) {
@@ -615,9 +779,19 @@ export class VisionEngine {
       }
     }
 
+    this.pushHistory({
+      timestamp: now,
+      id,
+      landmarks: smoothed,
+      canonical,
+      palmCenter: { x: palmX, y: palmY },
+    })
+
     return {
       landmarks: smoothed,
       worldLandmarks: world,
+      id,
+      canonical,
       handedness,
       score: category?.score ?? 0,
       fingers,
@@ -629,6 +803,16 @@ export class VisionEngine {
       holdProgress: update.progress,
       fired: update.fired,
     }
+  }
+
+  /** Appends to the per-hand rolling history, creating the buffer on demand. */
+  private pushHistory(sample: HandHistorySample): void {
+    let buffer = this.history.get(sample.id)
+    if (!buffer) {
+      buffer = new TemporalBuffer<HandHistorySample>(HISTORY_CAPACITY)
+      this.history.set(sample.id, buffer)
+    }
+    buffer.push(sample)
   }
 
   private expireGestures(now: number): void {
@@ -658,6 +842,11 @@ export class VisionEngine {
       fps: Math.round(fps),
       inferenceMs: Math.round(this.lastInference * 10) / 10,
       tracking,
+      diagnostics: {
+        ...this.diagnostics.snapshot(),
+        // Scheduler drops are the frames this loop never processed.
+        droppedFrames: this.scheduler?.droppedFrames ?? this.diagnostics.snapshot().droppedFrames,
+      },
     })
 
     this.adaptQuality(now)
@@ -716,15 +905,15 @@ export class VisionEngine {
     return this.canvas
   }
 
-  private smootherFor(handedness: Handedness): LandmarkSmoother {
-    let smoother = this.smoothers.get(handedness)
+  private smootherFor(id: string): LandmarkSmoother {
+    let smoother = this.smoothers.get(id)
     if (!smoother) {
       const smoothing = this.config.tracking.smoothing
       smoother = new LandmarkSmoother({
         minCutoff: 0.35 + 2.8 * Math.pow(1 - smoothing, 1.6),
         beta: 0.004 + 0.035 * Math.pow(1 - smoothing, 2),
       })
-      this.smoothers.set(handedness, smoother)
+      this.smoothers.set(id, smoother)
     }
     return smoother
   }
@@ -755,6 +944,11 @@ export class VisionEngine {
     this.smoothers.clear()
     this.machines.clear()
     this.lastPalm.clear()
+    this.history.clear()
+    this.identity.reset()
+    this.poseReading = null
+    this.lastPoseAt = 0
+    this.diagnostics.reset()
     this.latestHandCount = 0
     this.lastInference = 0
     this.framesThisRun = 0

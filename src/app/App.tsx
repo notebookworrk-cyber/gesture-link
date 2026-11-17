@@ -2,6 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { useAppearanceSync } from '@/settings/useAppearanceSync'
 import { useVisionSettingsSync } from '@/vision/useVision'
+import { CalibrationPage } from '@/pages/Calibration/CalibrationPage'
 import { GalleryPage } from '@/pages/Gallery/GalleryPage'
 import { GestureCameraPage } from '@/pages/GestureCamera/GestureCameraPage'
 import { HomePage } from '@/pages/Home/HomePage'
@@ -23,6 +24,7 @@ export function App() {
           <Route path="/whiteboard" element={<WhiteboardPage />} />
           <Route path="/camera" element={<GestureCameraPage />} />
           <Route path="/training" element={<TrainingPage />} />
+          <Route path="/calibration" element={<CalibrationPage />} />
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
