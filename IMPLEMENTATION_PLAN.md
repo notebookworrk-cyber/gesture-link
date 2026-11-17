@@ -73,14 +73,16 @@ Goal: recognise a short window, not one frame, and refuse to guess.
 - Acceptance: held-out evaluation restated honestly, including the small-sample
   caveat; no ISL accuracy claim.
 
-## Stage 4 — Speaker and speech queue (Pending)
+## Stage 4 — Speaker and speech queue (Partially done)
 
-- Replace the cancel-every-call `speak()` with a FIFO queue: one utterance at a
-  time, explicit stop, pause between words, and a rate/pitch/volume setting.
-- Voice availability checked per language; when the browser has no voice the UI
-  says so and stays silent rather than falling back to another language.
-- Acceptance: unit tests for queue ordering, stop/reset and unavailable voices;
-  a browser check confirming a real utterance only with a user-visible voice.
+- Queue done: `speak()` no longer cancels the current utterance. Utterances play
+  one at a time with a configurable gap, advance on `end`/`error`, and
+  `stopSpeaking()` clears both the active utterance and the queue. A language
+  the browser has no voice for is refused before queueing, and an empty voice
+  list is treated as "not known yet" rather than "missing".
+- Pending: rate/pitch/volume controls in Settings, and a caption-level voice
+  picker. Acceptance for the remainder: unit tests for the controls and a
+  browser check confirming a real utterance only with a user-visible voice.
 
 ## Stage 5 — Captions, dictionary and history (Pending)
 
