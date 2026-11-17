@@ -2,6 +2,28 @@
 ## ULTIMATE MASTER BUILD PROMPT
 ### AI Gesture Intelligence, Sign Language, Air Canvas & Smart Camera
 
+> **3.0 status note (2026-11-17).** Everything below is the original 2.0 build
+> brief, kept as the product requirement record. GestureLink 3.0 has been built
+> on top of it; the *shipped* state is in [`FEATURE_STATUS.md`](./FEATURE_STATUS.md),
+> the stage-by-stage record in [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md),
+> and the recognition model's scope and limits in [`MODEL_CARD.md`](./MODEL_CARD.md).
+>
+> The 3.0 delta that supersedes parts of the brief below:
+> - Recognition scores a 1.1 s time-normalised window (model v2), not one frame.
+>   Static and moving signs share one sliding-window path; there is no
+>   energy-based segmenter and no per-label threshold.
+> - Two-handed support is the second hand's offset and presence, not its full
+>   landmark shape.
+> - The vocabulary is entirely the user's own recordings. No ISL dataset or
+>   model is bundled and no ISL accuracy is claimed; a public silhouette dataset
+>   was evaluated and rejected (see the model card).
+> - Reading history can be exported as JSON; landmark-window replay is not
+>   implemented.
+> - Navigation is grouped as Workspace / Studio / System and a shared status
+>   strip reports measured model, tracking and pose state.
+> - Real-hand accuracy remains unverified: the automated browser camera has no
+>   hand in front of it. Hardware verification is listed as pending, not passed.
+
 ---
 
 # YOUR ROLE

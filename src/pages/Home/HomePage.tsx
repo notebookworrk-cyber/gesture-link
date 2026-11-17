@@ -332,7 +332,7 @@ function HomeInspector() {
       </Panel>
       <Panel title={t('settings.aboutBuild')}>
         <div className={styles.inspectorRows}>
-          <InspectorRow label={t('settings.aboutVersion')} value="2.0.0" />
+          <InspectorRow label={t('settings.aboutVersion')} value="3.0.0" />
           <InspectorRow label={t('settings.aboutEngine')} value={t('status.building')} />
         </div>
       </Panel>

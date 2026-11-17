@@ -971,7 +971,7 @@ function AboutSection() {
   return (
     <Panel title={t('settings.navAbout')} flush>
       <div className={styles.rows}>
-        <Field label={t('settings.aboutVersion')} control={<span className="mono">2.0.0</span>} />
+        <Field label={t('settings.aboutVersion')} control={<span className="mono">3.0.0</span>} />
         <Field label={t('settings.aboutRuntime')} control={<span>{runtime}</span>} />
         <Field
           label={t('settings.aboutEngine')}

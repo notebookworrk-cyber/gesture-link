@@ -5,7 +5,7 @@ milestone. A feature is only listed under **Completed** when it has been run in
 a browser; model accuracy that needs a real hand in front of a camera is never
 claimed from a headless test.
 
-Last updated: stage 6 (navigation restructure, shared status bar, live announcements).
+Last updated: stage 7 (documentation, version 3.0 and final gates).
 
 ## Completed
 
@@ -32,9 +32,25 @@ Last updated: stage 6 (navigation restructure, shared status bar, live announcem
 | Gesture bindings | Peace starts the countdown, thumbs up moves to the next filter, open palm shows or hides the controls, and pinch (OK) toggles the sticker effects. Every binding is remappable in Settings → Hand tracking, the master switch disables gesture control entirely, and conflicting bindings are reported because only the first action of a pair runs. The countdown is cancelled when the bound shape is released before it finishes. |
 | Gallery | Thumbnail grid over the stored photographs, full-size preview, rename, download (real file), delete behind a confirmation, date filter (all, today, 7 days, 30 days) and honest empty and error states. The stored list survives a reload; a deleted photograph does not come back. |
 | Sign dictionary | A Library workspace listing every label the user created with its category, description, sample count and last recording date. A segmented filter (all / in model / needs work) and a category picker narrow the list; labels with no samples are marked as such. A label is marked “in model” only when the current classifier has prototypes for it, and the page says plainly that this is not an accuracy claim and that the Training Studio evaluation measures accuracy on held-out recordings. Empty states distinguish “no signs yet” from “no filter match”. Browser-checked at 1440 and 390 px with no console errors or horizontal overflow. |
-| Quality gates | `tsc -b`, ESLint, 216 Vitest unit tests in 28 files (i18n completeness and placeholders, settings store and gesture bindings, formatting, One Euro, geometry and shape classification, feature extraction, gesture state machine, vision config, whiteboard geometry, store and export, photo filters, sticker anchors, countdown rules, the photo store, the temporal buffer, hand identity, landmark normalisation, frame scheduling, calibration, diagnostics, the speech queue, window features, the sliding sign window, take-to-window conversion, the v2 classifier, dictionary state and history export), production build, the Playwright UI check, the fake-camera vision check, the whiteboard check (`scripts/whiteboard-check.mjs`) and the camera check (`scripts/camera-check.mjs`): live preview pixels, real filter changes on the canvas, filter strength, sticker selection, two captures, gallery listing, rename, a real download, delete with confirmation, delete persistence after a reload, a binding conflict warning, 1440/1280/1024/390 layouts and a Japanese pass. The dictionary page was additionally checked in headless Chrome at 1440 and 390 px (empty state, no-model note, filter, nav link, no console errors, no mobile overflow), and the Studio navigation groups plus the shared status strip were checked the same way at both widths. |
+| Quality gates | `npm run verify` (TypeScript, ESLint, 216 Vitest unit tests in 28 files and production build), the Playwright UI check, the fake-camera vision check, the whiteboard check (`scripts/whiteboard-check.mjs`) and the camera check (`scripts/camera-check.mjs`): live preview pixels, real filter changes on the canvas, filter strength, sticker selection, two captures, gallery listing, rename, a real download, delete with confirmation, delete persistence after a reload, a binding conflict warning, 1440/1280/1024/390 layouts and a Japanese pass. The dictionary page and the Studio navigation/status strip were additionally checked in headless Chrome at 1440 and 390 px (no console errors, no mobile overflow). Unit coverage includes i18n completeness and placeholders, settings and gesture bindings, One Euro, geometry, feature extraction, gesture state, vision config, whiteboard geometry/export, photo filters and stickers, the photo store, temporal buffer, hand identity, landmark normalisation, frame scheduling, calibration, diagnostics, speech queue, window features, sliding sign windows, take conversion, the v2 classifier, dictionary state and history export. |
 | Build and assets | MediaPipe wasm and both model files are copied from `node_modules` / `models` into `public` by `predev`/`prebuild`, so the app works offline. At runtime the landmarker models are requested from Google's MediaPipe model store first — the same bytes as the bundled copies — because GitHub Pages was measured at roughly 60 s for the 7.8 MB hand model versus about 1 s from Google storage; the local copy remains the automatic fallback. Relative base path and hash routing for static hosting. |
 | Assets | SVG app icon (`public/favicon.svg`), local Inter variable font, Lucide icon set. |
+| Documentation for 3.0 | `README.md` describes the shipped workspaces, setup, scripts and limits; `SPEC.md` keeps the original 2.0 brief with a 3.0 delta note; `IMPLEMENTATION_PLAN.md` records each stage and its deviations; `MODEL_CARD.md` states that the vocabulary is the user's own recordings, that no ISL model or accuracy is bundled and why the public silhouette dataset was rejected. Package version, module status and the About/version displays now read 3.0.0. |
+
+## Gate notes
+
+- `npm run verify` passed end to end: typecheck, ESLint, 216 tests, production
+  build (1,172 kB app JS, 361 kB gzip; Vite prints its 900 kB chunk warning).
+  The warning is not suppressed by raising the limit.
+- `npm run check:ui`, `npm run check:vision` (after a rerun) and both
+  `scripts/whiteboard-check.mjs` and `scripts/camera-check.mjs` passed against
+  the production preview. The first vision run timed out once while the model
+  reloaded after a resolution change; the second run passed with measured
+  fps=19–22, inference 28–121 ms, 480 px processing and GPU under SwiftShader.
+- `scripts/camera-check.mjs` initially failed because a navigation aborted an
+  in-flight CDN model download and the harness counted `net::ERR_ABORTED` as an
+  error. The harness now ignores that specific abort during navigation; the
+  app's local model fallback is unchanged. The check passed afterwards.
 
 ## Implemented but not verified
 
@@ -79,6 +95,24 @@ Last updated: stage 6 (navigation restructure, shared status bar, live announcem
 - Speech synthesis in languages the browser has no voice for, and any translation model. The caption language selector only chooses a voice language; no translation is bundled, and bilingual mode stays single-line without one.
 - Keyboard shortcut overlay behind the top-bar help affordance.
 - Route-level code splitting for the bundles listed above.
+
+## User verification needed
+
+Nothing in this repository has put a real hand or face in front of a webcam, so
+these checks remain with the user and are not marked passed:
+
+1. Run `npm run dev`, start the camera and confirm the preview reports a live
+   stream, the delegate that actually ran, capture size and measured fps.
+2. Move a hand in/out of frame and across distances; confirm stable ids, the
+   hold/cooldown behaviour and that the HUD reports tracking loss honestly.
+3. Record at least two takes per label from different angles in Training
+   Studio, train, evaluate, and write down the measured accuracy and per-label
+   precision/recall from that held-out set.
+4. In Sign Reader, perform a stationary sign and a moving sign; confirm the
+   window model emits once per released sign, reports unknown honestly and
+   that the spoken word is not repeated every frame.
+5. Record the status-strip and diagnostics values observed on the target
+   hardware; no fps or inference number in this document is a hardware claim.
 
 ## Explicit non-goals for this build
 

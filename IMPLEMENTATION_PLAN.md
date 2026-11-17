@@ -164,13 +164,26 @@ clean (1,172 kB, 361 kB gzip); `npm run check:ui` passed (1440/1280/1024/390,
 Japanese and Hindi). A separate headless check confirmed the Studio group, its
 five links, the status strip and no mobile overflow at 1440 and 390 px.
 
-## Stage 7 — Documentation and verification (Pending)
+## Stage 7 — Documentation and verification (Done; user hardware check pending)
 
-- Update `SPEC.md`, `README.md`, `FEATURE_STATUS.md`; new `MODEL_CARD.md` that
-  states plainly: vocabulary comes from user recordings, no ISL dataset is
-  bundled, no ISL accuracy is claimed.
-- Full gate: `npm run verify`, Playwright UI/vision checks, and a user-run
-  real-camera session whose measured fps/inference/diagnostics are recorded.
+- README rewritten for 3.0 with setup, scripts, workspaces, architecture and
+  limits. SPEC.md keeps the original 2.0 brief and gains a 3.0 delta note
+  instead of rewriting user-authored requirements. FEATURE_STATUS.md is updated
+  with every stage and the gate results. New `MODEL_CARD.md` states plainly:
+  the vocabulary comes from user recordings, no ISL dataset or model is
+  bundled, no ISL accuracy is claimed, and why the silhouette dataset was
+  rejected.
+- Version is 3.0.0 in `package.json`, the lockfile, the module status and the
+  About/version displays.
+- Full gate: `npm run verify` — typecheck, ESLint, 216 tests in 28 files and
+  production build (1,172 kB, 361 kB gzip) — passed. `npm run check:ui`,
+  `npm run check:vision` (on rerun after a transient model-reload timeout),
+  `scripts/whiteboard-check.mjs` and `scripts/camera-check.mjs` passed against
+  the production preview. The camera harness now ignores `net::ERR_ABORTED`
+  when a navigation cancels an in-flight CDN model fetch.
+- Still pending and explicitly not claimed: the user-run real-camera session
+  recorded in `FEATURE_STATUS.md` → “User verification needed”. No fps,
+  inference or accuracy figure from real hardware is published here.
 
 ## Explicitly out of scope
 

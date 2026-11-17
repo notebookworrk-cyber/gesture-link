@@ -46,7 +46,10 @@ page.on('console', (message) => {
 })
 page.on('pageerror', (error) => consoleErrors.push(`pageerror: ${error.message}`))
 page.on('requestfailed', (request) => {
-  if (/\.(js|wasm|task)(\?|$)/.test(request.url())) {
+  // A navigation away from the studio aborts an in-flight CDN model download.
+  // The app falls back to the bundled copy, so an abort is not an app failure.
+  const aborted = request.failure()?.errorText === 'net::ERR_ABORTED'
+  if (!aborted && /\.(js|wasm|task)(\?|$)/.test(request.url())) {
     consoleErrors.push(`request failed: ${request.url()} (${request.failure()?.errorText})`)
   }
 })
