@@ -17,7 +17,9 @@ import { Workspace } from '@/components/layout/Workspace'
 import { CameraPreview } from '@/components/vision/CameraPreview'
 import { CaptionView } from '@/captions/CaptionView'
 import { CaptionEngine } from '@/captions/engine'
-import { speak } from '@/captions/speech'
+import { getSpeechEngine } from '@/speech/browser'
+import { SpeechEventManager } from '@/speech/SpeechEventManager'
+import type { SpeechState } from '@/speech/types'
 import type { CaptionLine } from '@/captions/types'
 import { localeMeta, useI18n } from '@/localization/i18n'
 import type { MessageKey } from '@/localization/locales/en'
@@ -65,6 +67,9 @@ export function SignReaderPage() {
   const setAccessibility = useSettings((state) => state.setAccessibility)
   const recognition = useSettings((state) => state.recognition)
   const cameraMirror = useSettings((state) => state.camera.mirror)
+  const speech = useSettings((state) => state.speech)
+  const captionLanguage = useSettings((state) => state.language.captions)
+  const voiceName = useSettings((state) => state.language.voice)
 
   const labels = useSigns((state) => state.labels)
   const model = useSigns((state) => state.model)
@@ -94,6 +99,12 @@ export function SignReaderPage() {
     bothKnown: false,
   }))
   const [composition, setComposition] = useState<Composition | null>(null)
+  const [speechState, setSpeechState] = useState<SpeechState>({
+    speaking: false,
+    paused: false,
+    pending: 0,
+    lastText: '',
+  })
   const announceAlternateRef = useRef(false)
 
   const modeRef = useRef(mode)
@@ -117,6 +128,24 @@ export function SignReaderPage() {
   const numbersRef = useRef(new NumberRecognizer())
   const operationRef = useRef<NumberOperation>(recognition.numberOperation)
   operationRef.current = recognition.numberOperation
+  const speechEngineRef = useRef<ReturnType<typeof getSpeechEngine>>(null)
+  if (speechEngineRef.current === null) speechEngineRef.current = getSpeechEngine()
+  const speechEventsRef = useRef<SpeechEventManager | null>(null)
+  if (!speechEventsRef.current) {
+    speechEventsRef.current = new SpeechEventManager({
+      lang: localeMeta[captionLanguage].tag,
+      voiceName,
+      rate: 1,
+      pitch: 1,
+      volume: 1,
+    })
+  }
+  const speechRef = useRef(speech)
+  speechRef.current = speech
+  const speechLangRef = useRef(localeMeta[captionLanguage].tag)
+  speechLangRef.current = localeMeta[captionLanguage].tag
+  const voiceRef = useRef(voiceName)
+  voiceRef.current = voiceName
 
   const captionEngineRef = useRef<CaptionEngine | null>(null)
   if (!captionEngineRef.current) captionEngineRef.current = new CaptionEngine(captions)
@@ -166,6 +195,18 @@ export function SignReaderPage() {
         setCaptionLines([...instance.snapshot.lines])
       }
       if (autoAddRef.current) setTokens((current) => appendWord(current, event.text))
+
+      // Automatic speech is fed only by committed recognition events.
+      const speechEngine = speechEngineRef.current
+      const settings = speechRef.current
+      if (speechEngine && settings.mode !== 'manual') {
+        const speechEvent = speechEventsRef.current?.consume(
+          event,
+          settings.mode,
+          settings.preview && settings.autoEnabled,
+        )
+        if (speechEvent) speechEngine.enqueue(speechEvent)
+      }
     },
     [],
   )
@@ -176,6 +217,22 @@ export function SignReaderPage() {
     if (!manager) return
     return manager.subscribe((event) => commit(event))
   }, [commit])
+
+  useEffect(() => {
+    const engine = speechEngineRef.current
+    if (!engine) return
+    return engine.subscribe(setSpeechState)
+  }, [])
+
+  useEffect(() => {
+    speechEventsRef.current?.configure({
+      lang: speechLangRef.current,
+      voiceName: voiceRef.current,
+      rate: speech.rate,
+      pitch: speech.pitch,
+      volume: speech.volume,
+    })
+  }, [speech, captionLanguage, voiceName])
 
   // Recognition runs on the shared engine's frames, but commits are owned by
   // the event manager rather than by this component.
@@ -368,12 +425,25 @@ export function SignReaderPage() {
 
   const readAloud = useCallback(() => {
     if (!text) return
-    const language = useSettings.getState().language
-    const ok = speak(text, {
-      voiceName: language.voice,
-      lang: localeMeta[language.captions].tag,
-    })
-    setNotice(ok ? t('reader.spoken') : t('reader.speechUnavailable'))
+    const engine = speechEngineRef.current
+    const manager = speechEventsRef.current
+    if (!engine || !manager) {
+      setNotice(t('reader.speechUnavailable'))
+      return
+    }
+    const manual: RecognitionEvent = {
+      id: `manual_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      key: 'manual',
+      text,
+      confidence: 1,
+      source: 'model',
+      hands: [],
+      startedAt: Date.now(),
+      committedAt: Date.now(),
+      durationMs: 0,
+    }
+    const speechEvent = manager.manual(manual)
+    setNotice(speechEvent && engine.enqueue(speechEvent) ? t('reader.spoken') : t('reader.speechUnavailable'))
   }, [t, text])
 
   const exportSentence = useCallback(() => {
@@ -447,10 +517,26 @@ export function SignReaderPage() {
       labelCount={labels.length}
       hasModel={Boolean(model)}
       debug={{ phase, stabilization, lastEvent }}
+      speech={{
+        mode: speech.mode,
+        preview: speech.preview,
+        autoEnabled: speech.autoEnabled,
+        state: speechState,
+        queued: (speechEngineRef.current?.pendingEvents ?? []).map((entry) => ({
+          id: entry.id,
+          text: entry.text,
+        })),
+      }}
       onCaptionMode={(captionMode) => useSettings.getState().setCaptions({ mode: captionMode })}
       onCaptionsVisible={(value) => setAccessibility({ captionsVisible: value })}
       onLoadTranscript={loadTranscript}
       onDeleteTranscript={(id) => void removeTranscript(id)}
+      onSpeechMode={(mode) => useSettings.getState().setSpeech({ mode })}
+      onSpeechPreview={(preview) => useSettings.getState().setSpeech({ preview })}
+      onSpeechAuto={(autoEnabled) => useSettings.getState().setSpeech({ autoEnabled })}
+      onSpeechStop={() => speechEngineRef.current?.stop()}
+      onSpeechReplay={() => speechEngineRef.current?.replay()}
+      onSpeechCancel={(id) => speechEngineRef.current?.cancel(id)}
     />
   )
 

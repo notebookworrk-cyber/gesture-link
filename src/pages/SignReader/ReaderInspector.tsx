@@ -1,8 +1,10 @@
 import { useI18n } from '@/localization/i18n'
 import type { MessageKey } from '@/localization/locales/en'
 import { Button } from '@/components/ui/Button'
-import { Segmented } from '@/components/ui/Controls'
+import { Segmented, Toggle } from '@/components/ui/Controls'
 import { Panel } from '@/components/ui/Panel'
+import type { SpeechMode } from '@/settings/settingsStore'
+import type { SpeechState } from '@/speech/types'
 import type { CaptionMode } from '@/captions/types'
 import type { ReaderMode, ReaderReading } from '@/signs/reader'
 import type { Transcript } from '@/signs/types'
@@ -18,10 +20,23 @@ interface ReaderInspectorProps {
   labelCount: number
   hasModel: boolean
   debug: { phase: string; stabilization: number; lastEvent: string }
+  speech: {
+    mode: SpeechMode
+    preview: boolean
+    autoEnabled: boolean
+    state: SpeechState
+    queued: Array<{ id: string; text: string }>
+  }
   onCaptionMode: (mode: CaptionMode) => void
   onCaptionsVisible: (visible: boolean) => void
   onLoadTranscript: (transcript: Transcript) => void
   onDeleteTranscript: (id: string) => void
+  onSpeechMode: (mode: SpeechMode) => void
+  onSpeechPreview: (preview: boolean) => void
+  onSpeechAuto: (enabled: boolean) => void
+  onSpeechStop: () => void
+  onSpeechReplay: () => void
+  onSpeechCancel: (id: string) => void
 }
 
 export function ReaderInspector({
@@ -34,10 +49,17 @@ export function ReaderInspector({
   labelCount,
   hasModel,
   debug,
+  speech,
   onCaptionMode,
   onCaptionsVisible,
   onLoadTranscript,
   onDeleteTranscript,
+  onSpeechMode,
+  onSpeechPreview,
+  onSpeechAuto,
+  onSpeechStop,
+  onSpeechReplay,
+  onSpeechCancel,
 }: ReaderInspectorProps) {
   const { t, formatNumber, formatDate } = useI18n()
 
@@ -107,6 +129,78 @@ export function ReaderInspector({
           <p className={styles.inspectorNote}>
             {t('reader.confidence')}: {formatNumber(Math.round(reading.confidence * 100))}%
           </p>
+        )}
+      </Panel>
+
+      <Panel title={t('speech.title')}>
+        <Segmented
+          ariaLabel={t('speech.mode')}
+          value={speech.mode}
+          onChange={(value) => onSpeechMode(value as SpeechMode)}
+          options={[
+            { value: 'manual', label: t('speech.modeManual') },
+            { value: 'word', label: t('speech.modeWord') },
+            { value: 'sentence', label: t('speech.modeSentence') },
+            { value: 'auto', label: t('speech.modeAuto') },
+          ]}
+        />
+        <div className={styles.inspectorSwitch}>
+          <Toggle
+            checked={speech.preview}
+            onChange={onSpeechPreview}
+            label={t('speech.preview')}
+          />
+          <span>{t('speech.preview')}</span>
+        </div>
+        <div className={styles.inspectorSwitch}>
+          <Toggle
+            checked={speech.autoEnabled && speech.preview}
+            onChange={onSpeechAuto}
+            disabled={!speech.preview}
+            label={t('speech.auto')}
+          />
+          <span>{t('speech.auto')}</span>
+        </div>
+        <p className={styles.inspectorNote}>{t('speech.autoNote')}</p>
+        <dl className={styles.detailList}>
+          <div>
+            <dt>{t('speech.status')}</dt>
+            <dd>
+              {speech.state.speaking
+                ? t('speech.statusSpeaking')
+                : t('speech.statusIdle')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('speech.pending')}</dt>
+            <dd>{formatNumber(speech.state.pending)}</dd>
+          </div>
+          <div>
+            <dt>{t('speech.last')}</dt>
+            <dd>{speech.state.lastText || '—'}</dd>
+          </div>
+        </dl>
+        <div className={styles.rowActions}>
+          <Button size="sm" variant="ghost" onClick={onSpeechStop}>
+            {t('speech.stop')}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onSpeechReplay}>
+            {t('speech.replay')}
+          </Button>
+        </div>
+        {speech.queued.length === 0 ? (
+          <p className={styles.inspectorNote}>{t('speech.empty')}</p>
+        ) : (
+          <ul className={styles.inspectorList}>
+            {speech.queued.map((entry) => (
+              <li key={entry.id}>
+                <span className={styles.historyText}>{entry.text}</span>
+                <Button size="sm" variant="ghost" onClick={() => onSpeechCancel(entry.id)}>
+                  {t('speech.cancel')}
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
       </Panel>
 

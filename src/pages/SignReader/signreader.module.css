@@ -299,6 +299,14 @@
   line-height: var(--lh-normal);
 }
 
+.inspectorSwitch {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+
 .inspectorButton {
   margin-top: var(--sp-2);
   justify-content: flex-start;
